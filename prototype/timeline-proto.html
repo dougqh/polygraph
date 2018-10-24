@@ -25,11 +25,14 @@
   class TimelineViewer extends HTMLElement {
     constructor() {
       super();
+      
+      const shadowRoot = this.attachShadow({mode: 'open'});
+      this._svg = svgutils.createElement('svg');
+      
+      shadowRoot.appendChild(this._svg);
     }
     
     connectedCallback() {
-      this._svg = svgutils.createElement('svg');
-      this.appendChild(this._svg);
     }
     
     set width(val) {
