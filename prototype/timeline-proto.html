@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><title>Timeline Prototype</title></head>
+<body>
+  <polygraph-timeline-viewer />
+</body>
+<script>
+(function() {
+  class TimelineViewer extends HTMLElement {
+    constructor() {
+      super();
+    }
+    
+    connectedCallback() {
+      this.innerHTML = 'timeline viewer';
+    }
+  }
+  window.customElements.define('polygraph-timeline-viewer', TimelineViewer);
+  
+  /*
+  class Timeline extends HtmlComponent {
+  
+  }
+  window.customElements.define('timeline', Timeline);
+  */
+})();
+</script>
+</html>
