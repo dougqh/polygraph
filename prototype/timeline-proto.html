@@ -2,34 +2,44 @@
 <html>
 <head><title>Timeline Prototype</title></head>
 <body>
-  <polygraph-timeline-viewer width="1000" height="400">
-    <polygraph-timeline />
-  </polygraph-timeline-viewer>
+  <pg-timeline-viewer width="1000" height="400">
+    <pg-timeline>
+      <pg-event x="20" label="Foo" />
+      <pg-event start-x="25" end-x="30" label="Bar" />
+    </pg-timeline>
+  </pg-timeline-viewer>
 </body>
 <script>
 (function() {
-  const svgutils = {
-    debug: false,
-    
-    createElement: function(tag) {
-      return document.createElementNS('http://www.w3.org/2000/svg', tag);
-    },
-    
-    setAttribute: function(el, name, val) {
-      svgutils.log('svg set', el, name, val);
-      el.setAttributeNS(null, name, val);
-    },
-    
-    getAttribute: function(el, name) {
-      svgutils.log('svg get', el, name);
-      return el.getAttributeNS(null, name);
-    }
-  };
+  'use strict';
   
-  if ( svgutils.debug ) {
-    svgutils.log = console.log;
-  } else {
-    svgutils.log = function() {};
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+  const polygraphPrefix = 'pg-';
+  
+  class Svg {
+    constructor(optSvg) {
+      this._svg = optSvg || document.createElementNS(svgNamespace, 'svg');
+    }
+    
+    get element() {
+      return this._svg;
+    }
+    
+    get width() {
+      return this._svg.getAttributeNS(null, 'width');
+    }
+    
+    set width(width) {
+      this._svg.setAttributeNS(null, 'width', width);
+    }
+    
+    get height() {
+      return this._svg.getAttributeNS(null, 'height');
+    }
+    
+    set height(height) {
+      this._svg.setAttributeNS(null, 'height', height);
+    }
   }
 
   class TimelineViewer extends HTMLElement {
@@ -37,9 +47,9 @@
       super();
       
       const shadowRoot = this.attachShadow({mode: 'open'});
-      this._svg = svgutils.createElement('svg');
       
-      shadowRoot.appendChild(this._svg);
+      this._svg = new Svg();
+      shadowRoot.appendChild(this._svg.element);
     }
     
     connectedCallback() {
@@ -51,23 +61,23 @@
       }
     }
     
-    set width(val) {
-      svgutils.setAttribute(this._svg, 'width', val);
+    set width(width) {
+      this._svg.width = width;
     }
     
     get width() {
-      return svgutils.getAttribute(this._svg, 'width');
+      return this._svg.width;
     }
     
-    set height(val) {
-      return svgutils.setAttribute(this._svg, 'height', val);
+    set height(height) {
+      this._svg.height = height;
     }
     
     get height() {
-      return svgutils.getAttribute(this._svg, 'height');
+      return this._svg.height;
     }
   }
-  window.customElements.define('polygraph-timeline-viewer', TimelineViewer);
+  window.customElements.define(polygraphPrefix + 'timeline-viewer', TimelineViewer);
   
   /*
   class Timeline extends HtmlComponent {
@@ -75,6 +85,30 @@
   }
   window.customElements.define('polygraph-timeline', Timeline);
   */
+  
+  class AbstractMethodError {}
+  
+  class Axis {
+    toPixel(val, minVal, maxVal, maxPixel) {
+      throw new AbstractMethodError('toPixel');
+    }
+  }
+  
+  class RawAxis extends Axis {
+    toPixel(val, minVal, maxVal, maxPixel) {
+      return 
+    }
+  }
+  
+  var axisDefs = {};
+  
+  var polygraph = {
+    Axis: Axis,
+    
+    defineAxis : function(name, axis) {
+      axisDefs[name] = axis;
+    }
+  };
 })();
 </script>
 </html>
