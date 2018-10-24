@@ -10,12 +10,26 @@
   </pg-timeline-viewer>
 </body>
 <script>
-(function() {
+var polygraph = (function() {
   'use strict';
   
-  const svgNamespace = 'http://www.w3.org/2000/svg';
   const polygraphPrefix = 'pg-';
+
+  class AbstractMethodError {}
+    
+  class Axis {
+    toPixel(val, minVal, maxVal, maxPixel) {
+      throw new AbstractMethodError('toPixel');
+    }
+  }
   
+  class RawAxis extends Axis {
+    toPixel(val, minVal, maxVal, maxPixel) {
+      return val;
+    }
+  }
+  
+  const svgNamespace = 'http://www.w3.org/2000/svg';
   class Svg {
     constructor(optSvg) {
       this._svg = optSvg || document.createElementNS(svgNamespace, 'svg');
@@ -77,28 +91,12 @@
       return this._svg.height;
     }
   }
-  window.customElements.define(polygraphPrefix + 'timeline-viewer', TimelineViewer);
-  
   /*
   class Timeline extends HtmlComponent {
   
   }
   window.customElements.define('polygraph-timeline', Timeline);
   */
-  
-  class AbstractMethodError {}
-  
-  class Axis {
-    toPixel(val, minVal, maxVal, maxPixel) {
-      throw new AbstractMethodError('toPixel');
-    }
-  }
-  
-  class RawAxis extends Axis {
-    toPixel(val, minVal, maxVal, maxPixel) {
-      return 
-    }
-  }
   
   var axisDefs = {};
   
@@ -107,8 +105,17 @@
     
     defineAxis : function(name, axis) {
       axisDefs[name] = axis;
+    },
+    
+    init: function(optPrefix) {
+      let prefix = optPrefix || 'pg';
+      
+      window.customElements.define(prefix + '-timeline-viewer', TimelineViewer);
     }
   };
+  return polygraph;
 })();
+
+polygraph.init();
 </script>
 </html>
