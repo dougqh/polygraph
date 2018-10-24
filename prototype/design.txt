@@ -1,15 +1,15 @@
-<poly-graph-viewer x-label="" x-unit="" y-label="" y-unit="" >
-  <series label="..." style="...">
-    <point x="" y="" label="..." />
-  </series>
+<pg-viewer x-label="" x-unit="" y-label="" y-unit="" >
+  <pg-series label="..." style="...">
+    <pg-point x="" y="" label="..." />
+  </pg-series>
 </poly-graph-viewer>
 
-<poly-timeline-viewer x-unit="" x-label="">
-  <timeline label="">
-    <point x="" label="..." />
-    <range min-x="" max-x="" label="..." />
+<pg-timeline-viewer x-unit="" x-label="">
+  <pg-timeline label="">
+    <pg-event x="" label="..." />
+    <pg-event min-x="" max-x="" label="..." />
     ...
-  </timeline>
-</poly-timeline-viewer>
+  </pg-timeline>
+</pg-timeline-viewer>
 
 Axis can be defined through objects for more flexible control
