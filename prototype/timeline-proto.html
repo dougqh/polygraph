@@ -17,12 +17,12 @@
     
     setAttribute: function(el, name, val) {
       svgutils.log('svg set', el, name, val);
-      el.setAttributeNS('http://www.w3.org/2000/svg', name, val);
+      el.setAttributeNS(null, name, val);
     },
     
     getAttribute: function(el, name) {
       svgutils.log('svg get', el, name);
-      return el.getAttributeNS('http://www.w3.org/2000/svg', name);
+      return el.getAttributeNS(null, name);
     }
   };
   
