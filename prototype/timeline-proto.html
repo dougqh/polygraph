@@ -2,17 +2,50 @@
 <html>
 <head><title>Timeline Prototype</title></head>
 <body>
-  <polygraph-timeline-viewer />
+  <polygraph-timeline-viewer width="1000" height="400">
+    <polygraph-timeline />
+  </polygraph-timeline-viewer>
 </body>
 <script>
 (function() {
+  const svgutils = {
+    createElement: function(tag) {
+      return document.createElementNS('http://www.w3.org/2000/svg', tag);
+    },
+    
+    setAttribute: function(el, name, val) {
+      el.setAttributeNS(null, name, val);
+    },
+    
+    getAttribute: function(el, name) {
+      return el.getAttributeNS(null, name);
+    }
+  };
+
   class TimelineViewer extends HTMLElement {
     constructor() {
       super();
     }
     
     connectedCallback() {
-      this.innerHTML = 'timeline viewer';
+      this._svg = svgutils.createElement('svg');
+      this.appendChild(this._svg);
+    }
+    
+    set width(val) {
+      svgutils.setAttribute(this._svg, 'width', width);
+    }
+    
+    get width() {
+      return svgutils.getAttribute(this._svg, 'width');
+    }
+    
+    set height(val) {
+      return svgutils.setAttribute('height', val);
+    }
+    
+    get height() {
+      return svgutils.getAttribute('height');
     }
   }
   window.customElements.define('polygraph-timeline-viewer', TimelineViewer);
@@ -21,7 +54,7 @@
   class Timeline extends HtmlComponent {
   
   }
-  window.customElements.define('timeline', Timeline);
+  window.customElements.define('polygraph-timeline', Timeline);
   */
 })();
 </script>
