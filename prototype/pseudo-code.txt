@@ -1,0 +1,46 @@
+{ 'label': 'Foo':
+  points: [
+    { x: '2:30', y: 10000, label: ... },
+    ...
+  ]
+};
+
+polygraph.define('time', class extends polygraph.Axis {
+  translate(raw, minPixel, maxPixel) {
+  }
+  
+  step(nativeMin, nativeMax, maxTicks) {
+  
+  }
+});
+
+<pg-graph-viewer id="foo" x-unit="time" x-max-ticks="10">
+  <pg-x-marker x="2:00" label="..." />
+
+  <pg-series label="Foo" style="scatter">
+    <pg-pt x="2:30" y="10000"></pg-pt>
+    <pg-pt x="3:00" y="120000"></pg-pt>
+  </pg-series>
+  
+  <pg-series label="Bar" style="line">
+    <pg-pt x="3:00" y="120000"></pg-pt>
+    ...
+  </pg-series />
+</pg-graph-viewer>
+
+<pg-timeline-viewer x-sync="foo">
+  <pg-timeline label="Thread 1">
+    <pg-event start-time="2:30" end-time="3:30" class="success" />
+    ...
+    
+  </pg-timeline>
+</pg-timeline-viewer>
+
+
+<pg-graph-viewer id="secondary" y-sync-with="master">
+  ...
+</pg-series>
+
+<pg-timeline-viewer x-sync-with="secondary">
+  ...
+</pg-timeline-viewer>
