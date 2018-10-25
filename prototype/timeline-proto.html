@@ -127,6 +127,12 @@ const polygraph = (() => {
         throw new AbstractMethodError('translate');
       }
       
+      translateRangeObj(range) {
+        return new ranges.Range(
+          this.translate(range.min),
+          this.translate(range.max));
+      }
+      
       format(val) {
         return val;
       }
@@ -139,6 +145,10 @@ const polygraph = (() => {
       
       translate(val) {
         return val;
+      }
+      
+      translateRangeObj(range) {
+        return range;
       }
     };
     
@@ -268,12 +278,12 @@ const polygraph = (() => {
     };
     
     svg.attr = (element, attr, value) => {
-      document.setAttributeNS(null, attr, value);
+      element.setAttributeNS(null, attr, value);
     };
     
     svg.attrs = (element, attrs) => {
       for (let attr in attrs ) {
-        document.setAttributeNS(null, attr, attrs[attr]);
+        element.setAttributeNS(null, attr, attrs[attr]);
 	  }
     };
     
@@ -288,9 +298,12 @@ const polygraph = (() => {
   const viewport = (() => {
     const viewport = {};
     
+    const log = noLog;
+    
     viewport.AbstractAxisModel = class {
       constructor(viewport, optAxis) {
         this._axis = optAxis || new axes.NumericAxis();
+        this._scale = 1;
         
         this._viewports = [];
         this.addViewport(viewport);
@@ -304,6 +317,10 @@ const polygraph = (() => {
         return this._axis.translate(val);
       }
       
+      translateRangeObj(range) {
+        return this._axis.translateRangeObj(range);
+      }
+      
       deserialize(str) {
         return this._axis.deserialize(str);
       }
@@ -315,6 +332,21 @@ const polygraph = (() => {
       
       get range() {
         throw new AbstractMethodError('range');
+      }
+      
+      get scale() {
+        return this._scale;
+      }
+      
+      createPixelCalculator(numPixels) {
+        const transRange = this.translateRangeObj(this.range);
+        const transDiff = (transRange.max - transRange.min);
+        const scaleFactor = transDiff / numPixels;
+        
+        return (val) => {
+          const transDelta = this.translate(val) - transRange.min;
+          return transDelta * scaleFactor;
+        };
       }
     };
     
@@ -372,12 +404,12 @@ const polygraph = (() => {
         heightProp.connect(viewerElement);
         
         const overflowXProp = new properties.StyleProperty(this._div, 'overflow-x', {
-          defaultValue: 'auto'
+          defaultValue: 'hidden'
         });
         overflowXProp.connect(viewerElement);
         
         const overflowYProp = new properties.StyleProperty(this._div, 'overflow-y', {
-          defaultValue: 'auto'
+          defaultValue: 'hidden'
         });
         overflowYProp.connect(viewerElement);
       }
@@ -388,6 +420,27 @@ const polygraph = (() => {
     
       connectYAxis(viewerElement) {
       
+      }
+      
+      configureScale() {
+        // start with zoom-to-fit calculation
+        const boundingRect = this.boundingRect;
+        log('boundingRect', boundingRect);
+        
+        const xRange = this._xAxisModel.range;
+        const yRange = this._yAxisModel.range;
+        
+        const svgWidth = boundingRect.width * this._xAxisModel.scale;
+        const svgHeight = boundingRect.height * this._yAxisModel.scale;
+        
+        // propagate width & height to the svg element
+        svg.attrs(this._svg, {
+          width: svgWidth,
+          height: svgHeight
+        });
+        
+        this._xPixelCalc = this._xAxisModel.createPixelCalculator(svgWidth);
+        this._yPixelCalc = this._yAxisModel.createPixelCalculator(svgHeight);
       }
       
       set xAxis(xAxis) {
@@ -422,12 +475,12 @@ const polygraph = (() => {
         return this._yAxisModel.deserialize(str);
       }
       
-      transX(x) {
-        return this._xAxisModel.translate(x);
+      toXPixel(x) {
+        return this._xPixelCalc(x);
       }
       
-      transY(y) {
-        return this._yAxisModel.translate(y);
+      toYPixel(y) {
+        return this._yPixelCalc(y);
       }
       
       get requiredXRange() {
@@ -517,20 +570,12 @@ const polygraph = (() => {
       }
       
       render() {
-        console.log('TimelineViewer.render', this.xRange, this.yRange);
-        
-        console.log('viewport', this._viewport.xRange, this._viewport.yRange);
-        
-        const boundingRect = this._viewport.boundingRect;
-        console.log('boundingRect', boundingRect);
-        
-        
-        
-        
-//         const timelines = this.timelines;
-//         for ( let i = 0; i < timelines.length; ++i ) {
-//           timelines[i].render(this._viewport, this._viewport, i);
-//         }
+        this._viewport.configureScale();
+
+        const timelines = this.timelines;
+        for ( let i = 0; i < timelines.length; ++i ) {
+          timelines[i].render(i);
+        }
       }
     };
     
@@ -567,11 +612,15 @@ const polygraph = (() => {
         return rangeBuilder.make();
       }
       
-      render(viewport, index) {
+      render(index) {
+        const viewport = this._viewport;
+        
         const xRange = viewport.xRange;
-        const x1 = viewport.transX(xRange.min);
-        const x2 = viewport.transX(xRange.max);
-        const y = viewport.transY(index);
+        const x1 = viewport.toXPixel(xRange.min);
+        const x2 = viewport.toXPixel(xRange.max);
+        const y = viewport.toYPixel(index);
+        
+        console.log(x1, y, x2, y);
         
         viewport.svgElement.appendChild(svg.line(x1, y, x2, y));
       }
