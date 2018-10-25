@@ -13,3 +13,10 @@
 </pg-timeline-viewer>
 
 Axis can be defined through objects for more flexible control
+
+<pg-timeline-viewer x-axis="time" src="..url.." />
+
+<pg-timeline-viewer x-axis="time">
+  <pg-timeline src="..url..." />
+  <pg-timeline src="..url..." />
+</pg-timeline-viewer>
