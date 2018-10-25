@@ -2,7 +2,7 @@
 <html>
 <head><title>Timeline Prototype</title></head>
 <body>
-  <pg-timeline-viewer width="1000" height="400">
+  <pg-timeline-viewer width="1000" height="400" x-axis="time">
     <pg-timeline>
       <pg-event x="20" label="Foo" />
       <pg-event start-x="25" end-x="30" label="Bar" />
@@ -14,8 +14,9 @@ var polygraph = (() => {
   'use strict';
   
   var polygraph = {};
-  const polygraphPrefix = 'pg-';
-
+  
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+    
   class AbstractMethodError {}
   
   class Axis {
@@ -28,7 +29,9 @@ var polygraph = (() => {
     }
   }
   polygraph.Axis = Axis;
-    
+  
+  
+  // TODO: Switch to dictionary?
   var axisDefs = {};
   polygraph.defineAxis = (name, axis) => {
     axisDefs[name] = axis;
@@ -39,56 +42,125 @@ var polygraph = (() => {
       return val;
     }
   }
-  
-  
-  class AxisModel {
-    constructor(axis) {
-      this._axis = axis;
-    }
+
+  var properties = (() => {
+    var properties = {};
     
-    min(lhsVal, rhsVal) {
-      return this._xAxis.min(lhsVal, rhsVal);
-    }
-    
-    get bounds() {
-      return {min: this._min, max: this._max};
-    }
-  }
-  
-  var createAttributeNSProperty = (element, ns, prop) => {
-    return {
+    class AbstractElementProperty {
+      constructor(element, prop) {
+        this._element = element;
+        this._prop = prop;
+      }
+      
       get() {
-        return element.getAttributeNS(ns, prop);
-      },
+        throw AbstractMethodError('get');
+      }
       
       set(val) {
-        return element.setAttributeNS(ns, prop, val);
+        throw AbstractMethodError('set(val)');
+      }
+      
+      connect(element) {
+        if ( element.hasAttribute(this._prop) ) {
+          element[this._prop] = element.getAttribute(this._prop);
+        }
+      }
+    }
+    
+    properties.AttributeProperty = class extends AbstractElementProperty {
+      constructor(element, prop) {
+        super(element, prop);
+      }
+      
+      get() {
+        return this._element.getAttribute(this._prop);
+      }
+      
+      set(val) {
+        this._element.setAttribute(this._prop, val);
       }
     };
-  };
-  
-  const svgNamespace = 'http://www.w3.org/2000/svg';
-  class SvgViewportMixin {
-    constructor(optSvg) {
-      this._svg = optSvg || document.createElementNS(svgNamespace, 'svg');
-    }
     
-    connect(viewerElement) {
-      Object.defineProperty(viewerElement, 'width', createAttributeNSProperty(this._svg, null, 'width'));
-      Object.defineProperty(viewerElement, 'height', createAttributeNSProperty(this._svg, null, 'height'));
+    properties.AttributeNSProperty = class extends AbstractElementProperty {
+      constructor(element, ns, prop) {
+        super(element, prop);
+        this._ns = ns;
+      }
       
-      if ( viewerElement.hasAttribute('width') ) {
-        viewerElement.width = viewerElement.getAttribute('width');
+      get() {
+        return this._element.getAttributeNS(this._ns, this._prop);
       }
-      if ( viewerElement.hasAttribute('height') ) {
-        viewerElement.height = viewerElement.getAttribute('height'); 
+      
+      set(val) {
+        this._element.setAttributeNS(this._ns, this._prop, val);
       }
     }
     
-    get element() {
-      return this._svg;
+    properties.StyleProperty = class extends AbstractElementProperty {
+      constructor(element, ns, prop) {
+        super(element, prop);
+      }
+      
+      get() {
+        return this._element.style[this._prop];
+      }
+      
+      set(val) {
+        this._element.style[this._prop] = val;
+      }
     }
-  }
+    
+    return properties;
+  })();  
+  
+  var viewport = (() => {
+    var viewport = {};
+    
+    viewport.AxisModel = class {
+      constructor(axis) {
+        this._axis = axis;
+      }
+    
+      min(lhsVal, rhsVal) {
+        return this._xAxis.min(lhsVal, rhsVal);
+      }
+    
+      get bounds() {
+        return {min: this._min, max: this._max};
+      }
+    }
+    
+    viewport.SvgViewportMixin = class {
+      constructor() {
+        this._div = document.createElement('div');
+        this._svg = document.createElementNS(svgNamespace, 'svg');
+      
+        this._div.appendChild(this._svg);
+      }
+    
+      connect(viewerElement) {
+        const widthProp = new properties.StyleProperty(this._div, 'width');
+        widthProp.connect(viewerElement);
+      
+        const heightProp = new properties.StyleProperty(this._div, 'height');
+        heightProp.connect(viewerElement);
+      }
+    
+      connectXAxis(viewerElement) {
+      
+      }
+    
+      connectYAxis(viewerElement) {
+      }
+    
+      get element() {
+        return this._div;
+      }
+    }
+    
+    return viewport;
+  })();
+
   
   class AbstractViewer extends HTMLElement {
     constructor() {
@@ -96,7 +168,7 @@ var polygraph = (() => {
       
       const shadowRoot = this.attachShadow({mode: 'open'});
       
-      this._viewport = new SvgViewportMixin();
+      this._viewport = new viewport.SvgViewportMixin();
       shadowRoot.appendChild(this._viewport.element);
     }
   }
