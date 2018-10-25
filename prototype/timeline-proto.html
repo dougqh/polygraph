@@ -71,7 +71,6 @@ const polygraph = (() => {
         }
       }
       
-      
       recordRange(min, max) {
         log('before recordRange', this);
         log('recordRange', min, max);
@@ -98,7 +97,7 @@ const polygraph = (() => {
       }
       
       make() {
-        return new Range(this._min, this._max);
+        return new ranges.Range(this._min, this._max);
       }
     };
     
@@ -289,9 +288,16 @@ const polygraph = (() => {
   const viewport = (() => {
     const viewport = {};
     
-    viewport.AxisModel = class {
-      constructor(optAxis) {
+    viewport.AbstractAxisModel = class {
+      constructor(viewport, optAxis) {
         this._axis = optAxis || new axes.NumericAxis();
+        
+        this._viewports = [];
+        this.addViewport(viewport);
+      }
+      
+      addViewport(viewport) {
+        this._viewports.push(viewport);
       }
       
       translate(val) {
@@ -306,7 +312,31 @@ const polygraph = (() => {
         const compareFn = this._axis.compare.bind(this._axis);
         return new ranges.RangeBuilder(compareFn);
       }
-    }
+      
+      get range() {
+        throw new AbstractMethodError('range');
+      }
+    };
+    
+    viewport.XAxisModel = class extends viewport.AbstractAxisModel {
+      get range() {
+        const rangeBuilder = this.createRangeBuilder();
+        this._viewports.forEach((viewport) => {
+          rangeBuilder.recordRangeObj(viewport.computeXRange());
+        });
+        return rangeBuilder.make();
+      }
+    };
+    
+    viewport.YAxisModel = class extends viewport.AbstractAxisModel {
+      get range() {
+        const rangeBuilder = this.createRangeBuilder();
+        this._viewport.forEach((viewport) => {
+          rangeBuilder.recordRangeObj(viewport.computeYRange());
+        });
+        return rangeBuilder.make();
+      }
+    };
     
     viewport.SvgViewportMixin = class {
       constructor() {
@@ -316,8 +346,8 @@ const polygraph = (() => {
         this._div.appendChild(this._svg);
         
         // TODO: Defer construction once sync is supported?
-        this._xAxisModel = new viewport.AxisModel();
-        this._yAxisModel = new viewport.AxisModel();
+        this._xAxisModel = new viewport.XAxisModel(this);
+        this._yAxisModel = new viewport.YAxisModel(this);
       }
       
       get element() {
@@ -329,6 +359,8 @@ const polygraph = (() => {
       }
       
       connect(viewerElement) {
+        this._viewer = viewerElement;
+      
         const widthProp = new properties.StyleProperty(this._div, 'width');
         widthProp.connect(viewerElement);
       
@@ -393,6 +425,14 @@ const polygraph = (() => {
       transY(y) {
         return this._yAxisModel.translate(y);
       }
+      
+      computeXRange() {
+        return this._viewer.xRange;
+      }
+      
+      computeYRange() {
+        return this._viewer.yRange;
+      }
     }
     
     Object.freeze(viewport);
@@ -415,7 +455,7 @@ const polygraph = (() => {
   const timeline = (() => {
     const timeline = {};
     
-    const log = console.log;
+    const log = noLog;
     
     timeline.SwimlaneAxis = class extends axes.Axis {
       static get DEFAULT_SPACING_PX() { return 50; }
@@ -466,6 +506,8 @@ const polygraph = (() => {
       
       render() {
         console.log('TimelineViewer.render', this.xRange, this.yRange);
+        
+        
 //         const timelines = this.timelines;
 //         for ( let i = 0; i < timelines.length; ++i ) {
 //           timelines[i].render(this._viewport, this._viewport, i);
