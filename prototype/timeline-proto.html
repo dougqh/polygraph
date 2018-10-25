@@ -2,7 +2,7 @@
 <html>
 <head><title>Timeline Prototype</title></head>
 <body>
-  <pg-timeline-viewer width="1000" height="400" x-axis="time">
+  <pg-timeline-viewer width="1000px" height="400px" x-axis="time">
     <pg-timeline>
       <pg-event x="20" label="Foo" />
       <pg-event start-x="25" end-x="30" label="Bar" />
@@ -46,7 +46,7 @@ var polygraph = (() => {
   var properties = (() => {
     var properties = {};
     
-    const log = () => {}; // console.log;
+    const log = console.log;
     
     class AbstractElementProperty {
       constructor(element, prop) {
