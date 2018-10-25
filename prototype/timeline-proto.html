@@ -19,29 +19,39 @@ const polygraph = (() => {
     
   class AbstractMethodError {}
   
-  class Axis {
-    min(lhsVal, rhsVal) {
-      return ( lhsVal <= rhsVal ) ? lhsVal : rhsVal;
-    }
+  const axes = (() => {
+    const axes = {};
     
-    toPixel(val, minVal, maxVal, maxPixel) {
-      throw new AbstractMethodError('toPixel');
-    }
-  }
-  polygraph.Axis = Axis;
+    axes.Axis = class {
+      min(lhsVal, rhsVal) {
+        return ( lhsVal <= rhsVal ) ? lhsVal : rhsVal;
+      }
+    
+      toPixel(val, minVal, maxVal) {
+        throw new AbstractMethodError('toPixel');
+      }
+    };
+    
+    axes.DefaultAxis = class extends axes.Axis {
+      toPixel(val, minVal, maxVal) {
+        return val;
+      }
+    };
+    
+    // TODO: Switch to dictionary
+    const defs = {};
+    axes.define = (name, axis) => {
+      defs[name] = axis;
+    }; 
+    
+    return axes;
+  })();
   
   
-  // TODO: Switch to dictionary?
-  const axisDefs = {};
+  polygraph.Axis = axes.Axis;
   polygraph.defineAxis = (name, axis) => {
-    axisDefs[name] = axis;
+    axis.define(name, axis);
   };
-  
-  class RawAxis extends Axis {
-    toPixel(val, minVal, maxVal, maxPixel) {
-      return val;
-    }
-  }
 
   const properties = (() => {
     const properties = {};
@@ -146,12 +156,12 @@ const polygraph = (() => {
     const viewport = {};
     
     viewport.AxisModel = class {
-      constructor(axis) {
-        this._axis = axis;
+      constructor(optAxis) {
+        this._axis = optAxis || new axes.DefaultAxis();
       }
     
       min(lhsVal, rhsVal) {
-        return this._xAxis.min(lhsVal, rhsVal);
+        return this._axis.min(lhsVal, rhsVal);
       }
     
       get bounds() {
@@ -165,8 +175,16 @@ const polygraph = (() => {
         this._svg = document.createElementNS(svgNs, 'svg');
       
         this._div.appendChild(this._svg);
+        
+        // TODO: Defer construction once sync is supported?
+        this._xModel = new viewport.AxisModel();
+        this._yModel = new viewport.AxisModel();
       }
-    
+      
+      get element() {
+        return this._div;
+      }
+      
       connect(viewerElement) {
         const widthProp = new properties.StyleProperty(this._div, 'width');
         widthProp.connect(viewerElement);
@@ -191,9 +209,21 @@ const polygraph = (() => {
     
       connectYAxis(viewerElement) {
       }
-    
-      get element() {
-        return this._div;
+      
+      set xAxis(xAxis) {
+        this._xModel.axis = xAxis;
+      }
+      
+      get xAxis() {
+        return this._xAxisModel.axis;
+      }
+      
+      set yAxis(yAxis) {
+        this._yModel.axis = yAxis;
+      }
+      
+      get yAxis() {
+        return this._yModel.axis;
       }
     }
     
@@ -211,27 +241,27 @@ const polygraph = (() => {
       shadowRoot.appendChild(this._viewport.element);
     }
   }
-  
 
-  
-  class Timeline extends HTMLElement {
-    constructor() {
-      super();
-    }
-    
-    set label(label) {
-      return this.setAttribute('label', label);
-    }
-    
-    get label() {
-      return this.getAttribute('label');
-    }
-  }
   
   const timeline = (() => {
     const timeline = {};
     
+    console.log('axes', axes);
+    
+    timeline.SwimlaneAxis = class extends axes.Axis {
+      static get DEFAULT_SPACING_PX() { return 50; }
+    
+      constructor(optSpacingPx) {
+        super();
+        
+        this._spacingPx = optSpacingPx || 
+          timeline.SwimlaneAxis.DEFAULT_SPACING_PX;
+      }
+    };
+    
     timeline.TimelineViewer = class extends AbstractViewer {
+      static get ELEMENT_NAME() { return 'timeline-viewer'; }
+      
       constructor() {
         super();
       }
@@ -240,10 +270,29 @@ const polygraph = (() => {
         this._viewport.connect(this);
         
         this._viewport.connectXAxis(this);
+        this._viewport.yAxis = new timeline.SwimlaneAxis();
       }
-    }
+    };
+    
+    timeline.Timeline = class extends HTMLElement {
+      static get ELEMENT_NAME() { return 'timeline' };
+      
+      constructor() {
+        super();
+      }
+    
+      set label(label) {
+        return this.setAttribute('label', label);
+      }
+    
+      get label() {
+        return this.getAttribute('label');
+      }
+    };
   
     timeline.TimelineEvent = class extends HTMLElement {
+      static get ELEMENT_NAME() { return 'event' };
+      
       constructor() {
         super();
       }
@@ -276,9 +325,11 @@ const polygraph = (() => {
       get endX() {
         return this.getAttribute('end-x');
       }
-    }
+    };
     
     timeline.init = (prefix) => {
+      timeline._prefix = prefix;
+    
       window.customElements.define(prefix + '-timeline-viewer', timeline.TimelineViewer);
     };
     
