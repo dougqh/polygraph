@@ -15,7 +15,7 @@ const polygraph = (() => {
   
   const polygraph = {};
   
-  const svgNamespace = 'http://www.w3.org/2000/svg';
+  const svgNs = 'http://www.w3.org/2000/svg';
     
   class AbstractMethodError {}
   
@@ -49,9 +49,11 @@ const polygraph = (() => {
     const log = () => {}; // console.log;
     
     class AbstractElementProperty {
-      constructor(element, prop) {
+      constructor(element, prop, options) {
         this._element = element;
         this._prop = prop;
+        
+        this._options = options;
       }
       
       getter() {
@@ -75,13 +77,16 @@ const polygraph = (() => {
       
         if ( element.hasAttribute(this._prop) ) {
           element[this._prop] = element.getAttribute(this._prop);
+        } else if ( typeof this._options.defaultValue !== 'undefined' ) {
+          element.setAttribute(this._prop, this._options.defaultValue);
+          element[this._prop] = this._options.defaultValue;
         }
       }
     }
     
     properties.AttributeProperty = class extends AbstractElementProperty {
-      constructor(element, prop) {
-        super(element, prop);
+      constructor(element, prop, options) {
+        super(element, prop, options);
         
         log('AttributeProperty', element, prop);
       }
@@ -98,8 +103,8 @@ const polygraph = (() => {
     };
     
     properties.AttributeNSProperty = class extends AbstractElementProperty {
-      constructor(element, ns, prop) {
-        super(element, prop);
+      constructor(element, ns, prop, options) {
+        super(element, prop, options);
         this._ns = ns;
         
         log('AttributeNSProperty', element, ns, prop);
@@ -117,8 +122,8 @@ const polygraph = (() => {
     }
     
     properties.StyleProperty = class extends AbstractElementProperty {
-      constructor(element, prop) {
-        super(element, prop);
+      constructor(element, prop, options) {
+        super(element, prop, options);
         
         log('StyleProperty', element, prop);
       }
@@ -157,7 +162,7 @@ const polygraph = (() => {
     viewport.SvgViewportMixin = class {
       constructor() {
         this._div = document.createElement('div');
-        this._svg = document.createElementNS(svgNamespace, 'svg');
+        this._svg = document.createElementNS(svgNs, 'svg');
       
         this._div.appendChild(this._svg);
       }
@@ -168,6 +173,16 @@ const polygraph = (() => {
       
         const heightProp = new properties.StyleProperty(this._div, 'height');
         heightProp.connect(viewerElement);
+        
+        const overflowXProp = new properties.StyleProperty(this._div, 'overflow-x', {
+          defaultValue: 'auto'
+        });
+        overflowXProp.connect(viewerElement);
+        
+        const overflowYProp = new properties.StyleProperty(this._div, 'overflow-y', {
+          defaultValue: 'auto'
+        });
+        overflowYProp.connect(viewerElement);
       }
     
       connectXAxis(viewerElement) {
@@ -195,7 +210,7 @@ const polygraph = (() => {
       this._viewport = new viewport.SvgViewportMixin();
       shadowRoot.appendChild(this._viewport.element);
     }
-  }  
+  }
   
 
   
@@ -223,6 +238,8 @@ const polygraph = (() => {
     
       connectedCallback() {
         this._viewport.connect(this);
+        
+        this._viewport.connectXAxis(this);
       }
     }
   
@@ -261,13 +278,17 @@ const polygraph = (() => {
       }
     }
     
+    timeline.init = (prefix) => {
+      window.customElements.define(prefix + '-timeline-viewer', timeline.TimelineViewer);
+    };
+    
     return timeline;
   })();
     
   polygraph.init = (optPrefix) => {
     const prefix = optPrefix || 'pg';
       
-    window.customElements.define(prefix + '-timeline-viewer', timeline.TimelineViewer);
+    timeline.init(prefix);
   };
   return polygraph;
 })();
