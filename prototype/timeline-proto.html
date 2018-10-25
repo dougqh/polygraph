@@ -10,10 +10,10 @@
   </pg-timeline-viewer>
 </body>
 <script>
-var polygraph = (() => {
+const polygraph = (() => {
   'use strict';
   
-  var polygraph = {};
+  const polygraph = {};
   
   const svgNamespace = 'http://www.w3.org/2000/svg';
     
@@ -32,7 +32,7 @@ var polygraph = (() => {
   
   
   // TODO: Switch to dictionary?
-  var axisDefs = {};
+  const axisDefs = {};
   polygraph.defineAxis = (name, axis) => {
     axisDefs[name] = axis;
   };
@@ -43,10 +43,10 @@ var polygraph = (() => {
     }
   }
 
-  var properties = (() => {
-    var properties = {};
+  const properties = (() => {
+    const properties = {};
     
-    const log = console.log;
+    const log = () => {}; // console.log;
     
     class AbstractElementProperty {
       constructor(element, prop) {
@@ -137,8 +137,8 @@ var polygraph = (() => {
     return properties;
   })();  
   
-  var viewport = (() => {
-    var viewport = {};
+  const viewport = (() => {
+    const viewport = {};
     
     viewport.AxisModel = class {
       constructor(axis) {
@@ -195,7 +195,8 @@ var polygraph = (() => {
       this._viewport = new viewport.SvgViewportMixin();
       shadowRoot.appendChild(this._viewport.element);
     }
-  }
+  }  
+  
 
   class TimelineViewer extends AbstractViewer {
     constructor() {
