@@ -198,15 +198,6 @@ const polygraph = (() => {
   }  
   
 
-  class TimelineViewer extends AbstractViewer {
-    constructor() {
-      super();
-    }
-    
-    connectedCallback() {
-      this._viewport.connect(this);
-    }
-  }
   
   class Timeline extends HTMLElement {
     constructor() {
@@ -222,45 +213,61 @@ const polygraph = (() => {
     }
   }
   
-  class TimelineEvent extends HTMLElement {
-    constructor() {
-      super();
+  const timeline = (() => {
+    const timeline = {};
+    
+    timeline.TimelineViewer = class extends AbstractViewer {
+      constructor() {
+        super();
+      }
+    
+      connectedCallback() {
+        this._viewport.connect(this);
+      }
+    }
+  
+    timeline.TimelineEvent = class extends HTMLElement {
+      constructor() {
+        super();
+      }
+    
+      set label(label) {
+        return this.setAttribute('label', label);
+      }
+    
+      get label() {
+        return this.getAttribute('label');
+      }
+    
+      set x(x) {
+        this.startX = x;
+        this.endX = x;
+      }
+    
+      set startX(x) {
+        return this.getAttribute('start-x');
+      }
+    
+      get startX() {
+        return this.getAttribute('start-x');
+      }
+    
+      set endX(x) {
+        return this.setAttribute('end-x', x);
+      }
+    
+      get endX() {
+        return this.getAttribute('end-x');
+      }
     }
     
-    set label(label) {
-      return this.setAttribute('label', label);
-    }
-    
-    get label() {
-      return this.getAttribute('label');
-    }
-    
-    set x(x) {
-      this.startX = x;
-      this.endX = x;
-    }
-    
-    set startX(x) {
-      return this.getAttribute('start-x');
-    }
-    
-    get startX() {
-      return this.getAttribute('start-x');
-    }
-    
-    set endX(x) {
-      return this.setAttribute('end-x', x);
-    }
-    
-    get endX() {
-      return this.getAttribute('end-x');
-    }
-  }
+    return timeline;
+  })();
     
   polygraph.init = (optPrefix) => {
     const prefix = optPrefix || 'pg';
       
-    window.customElements.define(prefix + '-timeline-viewer', TimelineViewer);
+    window.customElements.define(prefix + '-timeline-viewer', timeline.TimelineViewer);
   };
   return polygraph;
 })();
