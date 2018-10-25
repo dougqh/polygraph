@@ -46,21 +46,33 @@ var polygraph = (() => {
   var properties = (() => {
     var properties = {};
     
+    const log = console.log;
+    
     class AbstractElementProperty {
       constructor(element, prop) {
         this._element = element;
         this._prop = prop;
       }
       
-      get() {
+      getter() {
         throw AbstractMethodError('get');
       }
       
-      set(val) {
+      setter(val) {
         throw AbstractMethodError('set(val)');
       }
       
       connect(element) {
+        log('connect property', element, this._prop, this);
+        
+        Object.defineProperty(
+          element,
+          this._prop,
+          {
+            get: () => this.getter,
+            set: (val) => this.setter
+          });
+      
         if ( element.hasAttribute(this._prop) ) {
           element[this._prop] = element.getAttribute(this._prop);
         }
@@ -70,13 +82,17 @@ var polygraph = (() => {
     properties.AttributeProperty = class extends AbstractElementProperty {
       constructor(element, prop) {
         super(element, prop);
+        
+        log('AttributeProperty', element, prop);
       }
       
-      get() {
+      getter() {
         return this._element.getAttribute(this._prop);
       }
       
-      set(val) {
+      setter(val) {
+        log('set attr', this, this._element, this._prop, val);
+      
         this._element.setAttribute(this._prop, val);
       }
     };
@@ -85,27 +101,35 @@ var polygraph = (() => {
       constructor(element, ns, prop) {
         super(element, prop);
         this._ns = ns;
+        
+        log('AttributeNSProperty', element, ns, prop);
       }
       
-      get() {
+      getter() {
         return this._element.getAttributeNS(this._ns, this._prop);
       }
       
-      set(val) {
+      setter(val) {
+        log('set attrNS', this, this._element, this._ns, this._prop, val);
+      
         this._element.setAttributeNS(this._ns, this._prop, val);
       }
     }
     
     properties.StyleProperty = class extends AbstractElementProperty {
-      constructor(element, ns, prop) {
+      constructor(element, prop) {
         super(element, prop);
+        
+        log('StyleProperty', element, prop);
       }
       
-      get() {
+      getter() {
         return this._element.style[this._prop];
       }
       
-      set(val) {
+      setter(val) {
+        log('set style', this, this._element, this._prop, val);
+        
         this._element.style[this._prop] = val;
       }
     }
