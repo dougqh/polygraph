@@ -46,7 +46,7 @@ var polygraph = (() => {
   var properties = (() => {
     var properties = {};
     
-    const log = console.log;
+    const log = () => {}; // console.log;
     
     class AbstractElementProperty {
       constructor(element, prop) {
