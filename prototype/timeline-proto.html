@@ -4,8 +4,8 @@
 <body>
   <pg-timeline-viewer width="1000px" height="400px" x-axis="time">
     <pg-timeline>
-      <pg-event x="20" label="Foo" />
-      <pg-event start-x="25" end-x="30" label="Bar" />
+      <pg-event x="20" label="Foo"></pg-event>
+      <pg-event start-x="25" end-x="30" label="Bar"></pg-event>
     </pg-timeline>
   </pg-timeline-viewer>
 </body>
@@ -14,26 +14,131 @@ const polygraph = (() => {
   'use strict';
   
   const polygraph = {};
-  
-  const svgNs = 'http://www.w3.org/2000/svg';
-    
+      
   class AbstractMethodError {}
+  
+  const noLog = () => {};
+  
+  const compare = (lhs, rhs) => {
+    if ( lhs < rhs ) {
+      return -1;
+    } else if ( lhs === rhs ) {
+      return 0;
+    } else {
+      return 1;
+    }
+  };
+        
+  const ranges = (() => {
+    const ranges = {};
+    
+    const log = noLog;
+    
+    ranges.Range = class {
+      constructor(min, max) {
+        this._min = min;
+        this._max = max;
+        
+        Object.freeze(this);
+      }
+      
+      get min() {
+        return this._min;
+      }
+      
+      get max() {
+        return this._max;
+      }
+    };
+    
+    ranges.RangeBuilder = class {
+      constructor(optCompareFn) {
+        this._compareFn = optCompareFn || compare;
+      }
+      
+      record(val) {
+        if ( typeof this._min === 'undefined' ) {
+          this._min = val;
+          this._max = val;
+        } else {
+          const compareFn = this._compareFn;
+        
+          if ( compareFn(val, this._min) < 0 ) {
+            this._min = val;
+          } else if ( compareFn(val, this._max) > 0 ) {
+            this._max = val;
+          }
+        }
+      }
+      
+      
+      recordRange(min, max) {
+        log('before recordRange', this);
+        log('recordRange', min, max);
+        
+        if ( typeof this._min === 'undefined' ) {
+          this._min = min;
+          this._max = max;
+        } else {
+          const compareFn = this._compareFn;
+        
+          if ( compareFn(min, this._min) < 0 ) {
+            this._min = min;
+          }
+          if ( compareFn(min, this._max) > 0 ) {
+            this._max = max;
+          }
+        }
+        
+        log('after recordRange', this);
+      }
+      
+      recordRangeObj(rangeObj) {
+        this.recordRange(rangeObj.min, rangeObj.max);
+      }
+      
+      make() {
+        return new Range(this._min, this._max);
+      }
+    };
+    
+    Object.freeze(ranges);
+    return ranges;
+  })();
   
   const axes = (() => {
     const axes = {};
     
     axes.Axis = class {
-      min(lhsVal, rhsVal) {
-        return ( lhsVal <= rhsVal ) ? lhsVal : rhsVal;
+      compare(lhsVal, rhsVal) {
+        if ( lhsVal < rhsVal ) {
+          return -1;
+        } else if ( lhsVal == rhsVal ) {
+          return 0;
+        } else {
+          return 1;
+        }
+      }
+      
+      deserialize(str) {
+        return str;
       }
     
-      toPixel(val, minVal, maxVal) {
-        throw new AbstractMethodError('toPixel');
+      translate(val) {
+        throw new AbstractMethodError('translate');
+      }
+      
+      format(val) {
+        return val;
       }
     };
     
-    axes.DefaultAxis = class extends axes.Axis {
-      toPixel(val, minVal, maxVal) {
+    axes.NumericAxis = class extends axes.Axis {
+      deserialize(str) {
+        return Number(str);
+      }
+      
+      translate(val) {
         return val;
       }
     };
@@ -42,8 +147,9 @@ const polygraph = (() => {
     const defs = {};
     axes.define = (name, axis) => {
       defs[name] = axis;
-    }; 
+    };
     
+    Object.freeze(axes);
     return axes;
   })();
   
@@ -56,7 +162,7 @@ const polygraph = (() => {
   const properties = (() => {
     const properties = {};
     
-    const log = () => {}; // console.log;
+    const log = noLog; // console.log;
     
     class AbstractElementProperty {
       constructor(element, prop, options) {
@@ -149,40 +255,77 @@ const polygraph = (() => {
       }
     }
     
+    Object.freeze(properties);
     return properties;
-  })();  
+  })();
+  
+  const svg = (() => {
+    const svg = {};
+    
+    svg.ns = 'http://www.w3.org/2000/svg';
+    
+    svg.create = (tag, optAttrs) => {
+      return document.createElementNS(svg.ns, tag);
+    };
+    
+    svg.attr = (element, attr, value) => {
+      document.setAttributeNS(null, attr, value);
+    };
+    
+    svg.attrs = (element, attrs) => {
+      for (let attr in attrs ) {
+        document.setAttributeNS(null, attr, attrs[attr]);
+	  }
+    };
+    
+    svg.line = (x1, y1, x2, y2) => {
+      return svg.create('line', {x1: x1, y1: y1, x2: x2, y2: y2});
+    };
+    
+    Object.freeze(svg);
+    return svg;
+  })();
   
   const viewport = (() => {
     const viewport = {};
     
     viewport.AxisModel = class {
       constructor(optAxis) {
-        this._axis = optAxis || new axes.DefaultAxis();
+        this._axis = optAxis || new axes.NumericAxis();
       }
-    
-      min(lhsVal, rhsVal) {
-        return this._axis.min(lhsVal, rhsVal);
+      
+      translate(val) {
+        return this._axis.translate(val);
       }
-    
-      get bounds() {
-        return {min: this._min, max: this._max};
+      
+      deserialize(str) {
+        return this._axis.deserialize(str);
+      }
+      
+      createRangeBuilder() {
+        const compareFn = this._axis.compare.bind(this._axis);
+        return new ranges.RangeBuilder(compareFn);
       }
     }
     
     viewport.SvgViewportMixin = class {
       constructor() {
         this._div = document.createElement('div');
-        this._svg = document.createElementNS(svgNs, 'svg');
+        this._svg = document.createElementNS(svg.ns, 'svg');
       
         this._div.appendChild(this._svg);
         
         // TODO: Defer construction once sync is supported?
-        this._xModel = new viewport.AxisModel();
-        this._yModel = new viewport.AxisModel();
+        this._xAxisModel = new viewport.AxisModel();
+        this._yAxisModel = new viewport.AxisModel();
       }
       
       get element() {
         return this._div;
+      }
+      
+      get svgElement() {
+        return this._svg;
       }
       
       connect(viewerElement) {
@@ -208,10 +351,11 @@ const polygraph = (() => {
       }
     
       connectYAxis(viewerElement) {
+      
       }
       
       set xAxis(xAxis) {
-        this._xModel.axis = xAxis;
+        this._xAxisModel.axis = xAxis;
       }
       
       get xAxis() {
@@ -219,14 +363,39 @@ const polygraph = (() => {
       }
       
       set yAxis(yAxis) {
-        this._yModel.axis = yAxis;
+        this._yAxisModel.axis = yAxis;
       }
       
       get yAxis() {
-        return this._yModel.axis;
+        return this._yAxisModel.axis;
+      }
+      
+      createXRangeBuilder() {
+        return this._xAxisModel.createRangeBuilder();
+      }
+      
+      createYRangeBuilder() {
+        return this._yAxisModel.createRangeBuilder();
+      }
+      
+      deserializeX(str) {
+        return this._xAxisModel.deserialize(str);
+      }
+      
+      deserializeY(str) {
+        return this._yAxisModel.deserialize(str);
+      }
+      
+      transX(x) {
+        return this._xAxisModel.translate(x);
+      }
+      
+      transY(y) {
+        return this._yAxisModel.translate(y);
       }
     }
     
+    Object.freeze(viewport);
     return viewport;
   })();
 
@@ -246,7 +415,7 @@ const polygraph = (() => {
   const timeline = (() => {
     const timeline = {};
     
-    console.log('axes', axes);
+    const log = console.log;
     
     timeline.SwimlaneAxis = class extends axes.Axis {
       static get DEFAULT_SPACING_PX() { return 50; }
@@ -260,25 +429,59 @@ const polygraph = (() => {
     };
     
     timeline.TimelineViewer = class extends AbstractViewer {
-      static get ELEMENT_NAME() { return 'timeline-viewer'; }
+      static get ELEMENT_NAME() { return 'pg-timeline-viewer'; }
       
       constructor() {
         super();
       }
     
       connectedCallback() {
+        log('connectedCallback', this);
+        
         this._viewport.connect(this);
         
         this._viewport.connectXAxis(this);
         this._viewport.yAxis = new timeline.SwimlaneAxis();
+        
+        timeline.whenDefined().then(() => this.render());
+      }
+      
+      get timelines() {
+        return this.querySelectorAll(timeline.Timeline.ELEMENT_NAME);
+      }
+      
+      get xRange() {
+        const timelines = this.timelines;
+        
+        const rangeBuilder = this._viewport.createXRangeBuilder();
+        for ( let i = 0; i < timelines.length; ++i ) {
+          rangeBuilder.recordRangeObj(timelines[i].xRange);
+        }
+        return rangeBuilder.make();
+      }
+      
+      get yRange() {
+        return new ranges.Range(0, this.timelines.length);
+      }
+      
+      render() {
+        console.log('TimelineViewer.render', this.xRange, this.yRange);
+//         const timelines = this.timelines;
+//         for ( let i = 0; i < timelines.length; ++i ) {
+//           timelines[i].render(this._viewport, this._viewport, i);
+//         }
       }
     };
     
     timeline.Timeline = class extends HTMLElement {
-      static get ELEMENT_NAME() { return 'timeline' };
+      static get ELEMENT_NAME() { return 'pg-timeline' };
       
       constructor() {
         super();
+      }
+      
+      get _viewport() {
+        return this.parentNode._viewport;
       }
     
       set label(label) {
@@ -286,15 +489,50 @@ const polygraph = (() => {
       }
     
       get label() {
-        return this.getAttribute('label');
+        this.getAttribute('label');
+      }
+      
+      get events() {
+        return this.querySelectorAll(timeline.TimelineEvent.ELEMENT_NAME);
+      }
+      
+      get xRange() {
+        const events = this.events;
+        
+        const rangeBuilder = this._viewport.createXRangeBuilder();
+        for ( let i = 0; i < events.length; ++i ) {
+          rangeBuilder.recordRange(events[i].startX, events[i].endX);
+        }
+        return rangeBuilder.make();
+      }
+      
+      render(viewport, index) {
+        const xRange = viewport.xRange;
+        const x1 = viewport.transX(xRange.min);
+        const x2 = viewport.transX(xRange.max);
+        const y = viewport.transY(index);
+        
+        viewport.svgElement.appendChild(svg.line(x1, y, x2, y));
       }
     };
   
     timeline.TimelineEvent = class extends HTMLElement {
-      static get ELEMENT_NAME() { return 'event' };
+      static get ELEMENT_NAME() { return 'pg-event' };
       
       constructor() {
         super();
+      }
+      
+      connectedCallback() {
+        if ( this.hasAttribute('x') ) {
+          const x = this.getAttribute('x');
+          this.setAttribute('start-x', x);
+          this.setAttribute('end-x', x);
+        }
+      }
+      
+      get _viewport() {
+        return this.parentNode._viewport;
       }
     
       set label(label) {
@@ -309,38 +547,62 @@ const polygraph = (() => {
         this.startX = x;
         this.endX = x;
       }
+      
+      get x() {
+        const startX = this.startX;
+        const endX = this.endX;
+        
+        if ( startX === endX ) return startX;
+      }
     
       set startX(x) {
-        return this.getAttribute('start-x');
+        this.setAttribute('start-x', x);
       }
     
       get startX() {
-        return this.getAttribute('start-x');
+        return this._viewport.deserializeX(this.getAttribute('start-x'));
       }
     
       set endX(x) {
-        return this.setAttribute('end-x', x);
+        this.setAttribute('end-x', x);
       }
     
       get endX() {
-        return this.getAttribute('end-x');
+        return this._viewport.deserializeX(this.getAttribute('end-x'));
       }
     };
     
-    timeline.init = (prefix) => {
-      timeline._prefix = prefix;
-    
-      window.customElements.define(prefix + '-timeline-viewer', timeline.TimelineViewer);
+    timeline.init = () => {
+      window.customElements.define(
+        timeline.TimelineViewer.ELEMENT_NAME,
+        timeline.TimelineViewer);
+        
+      window.customElements.define(
+        timeline.Timeline.ELEMENT_NAME,
+        timeline.Timeline);
+        
+      window.customElements.define(
+        timeline.TimelineEvent.ELEMENT_NAME,
+        timeline.TimelineEvent);
     };
     
+    timeline.whenDefined = () => {
+      return Promise.all([
+        window.customElements.whenDefined(timeline.TimelineViewer.ELEMENT_NAME),
+        window.customElements.whenDefined(timeline.Timeline.ELEMENT_NAME),
+        window.customElements.whenDefined(timeline.TimelineEvent.ELEMENT_NAME)
+      ]);
+    }
+    
+    Object.freeze(timeline);
     return timeline;
   })();
     
-  polygraph.init = (optPrefix) => {
-    const prefix = optPrefix || 'pg';
-      
-    timeline.init(prefix);
+  polygraph.init = () => {
+    timeline.init();
   };
+  
+  Object.freeze(polygraph);
   return polygraph;
 })();
 
