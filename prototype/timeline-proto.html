@@ -322,7 +322,7 @@ const polygraph = (() => {
       get range() {
         const rangeBuilder = this.createRangeBuilder();
         this._viewports.forEach((viewport) => {
-          rangeBuilder.recordRangeObj(viewport.computeXRange());
+          rangeBuilder.recordRangeObj(viewport.requiredXRange);
         });
         return rangeBuilder.make();
       }
@@ -331,8 +331,8 @@ const polygraph = (() => {
     viewport.YAxisModel = class extends viewport.AbstractAxisModel {
       get range() {
         const rangeBuilder = this.createRangeBuilder();
-        this._viewport.forEach((viewport) => {
-          rangeBuilder.recordRangeObj(viewport.computeYRange());
+        this._viewports.forEach((viewport) => {
+          rangeBuilder.recordRangeObj(viewport.requiredYRange);
         });
         return rangeBuilder.make();
       }
@@ -352,6 +352,10 @@ const polygraph = (() => {
       
       get element() {
         return this._div;
+      }
+      
+      get boundingRect() {
+        return this._div.getBoundingClientRect();
       }
       
       get svgElement() {
@@ -426,12 +430,20 @@ const polygraph = (() => {
         return this._yAxisModel.translate(y);
       }
       
-      computeXRange() {
+      get requiredXRange() {
         return this._viewer.xRange;
       }
       
-      computeYRange() {
+      get requiredYRange() {
         return this._viewer.yRange;
+      }
+      
+      get xRange() {
+        return this._xAxisModel.range;
+      }
+      
+      get yRange() {
+        return this._yAxisModel.range;
       }
     }
     
@@ -506,6 +518,13 @@ const polygraph = (() => {
       
       render() {
         console.log('TimelineViewer.render', this.xRange, this.yRange);
+        
+        console.log('viewport', this._viewport.xRange, this._viewport.yRange);
+        
+        const boundingRect = this._viewport.boundingRect;
+        console.log('boundingRect', boundingRect);
+        
+        
         
         
 //         const timelines = this.timelines;
