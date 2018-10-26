@@ -252,6 +252,10 @@ const polygraph = (() => {
         throw new AbstractMethodError('translate');
       }
       
+      step(range, maxSteps) {
+        throw new AbstractMethodError('step');
+      }
+      
       translateRangeObj(range) {
         return new ranges.Range(
           this.translate(range.min),
@@ -270,6 +274,11 @@ const polygraph = (() => {
       
       translate(val) {
         return val;
+      }
+      
+      step(range, maxSteps) {
+        const rawStep = (range.max - range.min) / maxSteps;
+        return rawStep;
       }
       
       translateRangeObj(range) {
@@ -401,12 +410,19 @@ const polygraph = (() => {
     viewport.AbstractAxisModel = class {
       constructor(viewport, opts) {
         this._axis = opts.axis || new axes.NumericAxis();
-        this._scale = 1;
         
         this._invert = opts.invert || false;
         
         this._viewports = [];
         this.addViewport(viewport);
+      }
+      
+      mixinAttributes(viewerElement) {
+        throw new AbstractMethodError('mixinAttributes');
+      }
+      
+      _mixinAttributesImpl(axisName, viewerElement) {
+        this._maxTicks = 10; // Number(viewerElement.getAttribute('max-' + axisName + '-ticks'));
       }
       
       addViewport(viewport) {
@@ -432,10 +448,6 @@ const polygraph = (() => {
       
       get range() {
         throw new AbstractMethodError('range');
-      }
-      
-      get scale() {
-        return this._scale;
       }
       
       createPixelCalculator(numPixels) {
@@ -472,6 +484,10 @@ const polygraph = (() => {
         super(viewport, opts);
       }
       
+      mixinAttributes(viewerElement) {
+        this._mixinAttributesImpl('x', viewerElement);
+      }
+      
       get range() {
         const rangeBuilder = this.createRangeBuilder();
         this._viewports.forEach((viewport) => {
@@ -489,6 +505,10 @@ const polygraph = (() => {
         
         super(viewport, opts);
       }
+      
+      mixinAttributes(viewerElement) {
+        this._mixinAttributesImpl('y', viewerElement);
+      }
     
       get range() {
         const rangeBuilder = this.createRangeBuilder();
@@ -501,7 +521,7 @@ const polygraph = (() => {
     
     const styleTemplate = html.styleTemplate(`
       .mask {
-        fill: lightgray;
+        fill: rgb(250,250,250);
       }
       
       polyline {
@@ -602,11 +622,11 @@ const polygraph = (() => {
       }
     
       mixinXAxisAttributes(viewerElement) {
-      
+        this._xAxisModel.mixinAttributes(viewerElement);
       }
     
       mixinYAxisAttributes(viewerElement) {
-      
+        this._yAxisModel.mixinAttributes(viewerElement);
       }
       
       configureScale() {
@@ -620,7 +640,7 @@ const polygraph = (() => {
       }
       
       get margin() {
-        return { left: 100, right: 25, top: 25, bottom: 50 };
+        return { left: 100, right: 0, top: 0, bottom: 50 };
       }
       
       updateDimensions(boundingDims) {
@@ -763,24 +783,30 @@ const polygraph = (() => {
     Object.freeze(viewport);
     return viewport;
   })();
+  
+  const viewer = (() => {
+    const viewer = {};
     
-  class AbstractViewer extends HTMLElement {
-    constructor(viewportOpts) {
-      super();
+    viewer.AbstractViewer = class extends HTMLElement {
+      constructor(viewportOpts) {
+        super();
       
-      const shadowRoot = this.attachShadow({mode: 'closed'});
+        const shadowRoot = this.attachShadow({mode: 'closed'});
       
-      this._viewport = new viewport.SvgViewport(viewportOpts);
-      shadowRoot.appendChild(this._viewport.style);
-      shadowRoot.appendChild(this._viewport.element);
+        this._viewport = new viewport.SvgViewport(viewportOpts);
+        shadowRoot.appendChild(this._viewport.style);
+        shadowRoot.appendChild(this._viewport.element);
+      }
     }
-  }
-
+    
+    Object.freeze(viewer);
+    return viewer;
+  })();
 
   const graph = (() => {
     const graph = {};
     
-    graph.GraphViewer = class extends AbstractViewer {
+    graph.GraphViewer = class extends viewer.AbstractViewer {
       static get ELEMENT_NAME() { return 'pg-graph-viewer'; };
       
       constructor() {
@@ -973,7 +999,7 @@ const polygraph = (() => {
       }
     };
     
-    timeline.TimelineViewer = class extends AbstractViewer {
+    timeline.TimelineViewer = class extends viewer.AbstractViewer {
       static get ELEMENT_NAME() { return 'pg-timeline-viewer'; }
       
       constructor() {
