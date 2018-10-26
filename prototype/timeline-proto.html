@@ -295,6 +295,10 @@ const polygraph = (() => {
       return svg.create('line', {x1: x1, y1: y1, x2: x2, y2: y2});
     };
     
+    svg.translate = (x, y) => {
+      return 'translate(' + x + ' ' + y + ')';
+    };
+    
     Object.freeze(svg);
     return svg;
   })();
@@ -380,12 +384,40 @@ const polygraph = (() => {
       }
     };
     
-    viewport.SvgViewportMixin = class {
-      constructor() {
-        this._div = document.createElement('div');
-        this._svg = document.createElementNS(svg.ns, 'svg');
+    const viewportTemplate = (() => {
+      const template = document.createElement('template');
       
-        this._div.appendChild(this._svg);
+      // Order is important for z-ordering
+      // Content -- then masks over contents -- then panels over the masks
+      const html = [
+        '<div>',
+        '<svg class="viewport" xmlns="http://www.w3.org/2000/svg">',
+          '<g class="content"></g>',
+          
+          '<rect class="left mask"></rect>',
+          '<rect class="right mask"></rect>',
+          '<rect class="top mask"></rect>',
+          '<rect class="bottom mask"></rect>',
+          
+          '<g class="left panel"></g>',
+          '<g class="right panel"></g>',
+          '<g class="top panel"></g>',
+          '<g class="bottom panel"></g>',
+        '</svg>',
+        '</div>'
+      ];
+      
+      template.innerHTML = html.join('');
+      
+      return template;
+    })();
+    
+    viewport.SvgViewport = class {
+      constructor() {
+        this._div = document.importNode(viewportTemplate.content, true).firstElementChild;
+        
+        this._svg = this._div.querySelector('svg');
+        this._content = this._svg.querySelector('.content');        
         
         // TODO: Defer construction once sync is supported?
         this._xAxisModel = new viewport.XAxisModel(this);
@@ -406,29 +438,31 @@ const polygraph = (() => {
       
       connect(viewerElement) {
         this._viewer = viewerElement;
+      }
       
+      mixinViewportAttributes(viewerElement) {
         const widthProp = new properties.StyleProperty(this._div, 'width');
         widthProp.connect(viewerElement);
       
         const heightProp = new properties.StyleProperty(this._div, 'height');
         heightProp.connect(viewerElement);
         
-        const overflowXProp = new properties.StyleProperty(this._div, 'overflow-x', {
-          defaultValue: 'hidden'
-        });
-        overflowXProp.connect(viewerElement);
-        
-        const overflowYProp = new properties.StyleProperty(this._div, 'overflow-y', {
-          defaultValue: 'hidden'
-        });
-        overflowYProp.connect(viewerElement);
+//         const overflowXProp = new properties.StyleProperty(this._div, 'overflow-x', {
+//           defaultValue: 'hidden'
+//         });
+//         overflowXProp.connect(viewerElement);
+//         
+//         const overflowYProp = new properties.StyleProperty(this._div, 'overflow-y', {
+//           defaultValue: 'hidden'
+//         });
+//         overflowYProp.connect(viewerElement);
       }
     
-      connectXAxis(viewerElement) {
+      mixinXAxisAttributes(viewerElement) {
       
       }
     
-      connectYAxis(viewerElement) {
+      mixinYAxisAttributes(viewerElement) {
       
       }
       
@@ -437,20 +471,89 @@ const polygraph = (() => {
         const boundingRect = this.boundingRect;
         log('boundingRect', boundingRect);
         
-        const xRange = this._xAxisModel.range;
-        const yRange = this._yAxisModel.range;
-        
-        const svgWidth = boundingRect.width * this._xAxisModel.scale;
-        const svgHeight = boundingRect.height * this._yAxisModel.scale;
-        
-        // propagate width & height to the svg element
-        svg.attrs(this._svg, {
-          width: svgWidth,
-          height: svgHeight
-        });
+        this.updateDimensions(boundingRect.width, boundingRect.height);
         
         this._xPixelCalc = this._xAxisModel.createPixelCalculator(svgWidth);
         this._yPixelCalc = this._yAxisModel.createPixelCalculator(svgHeight);
+      }
+      
+      get margin() {
+        return { left: 100, right: 25, top: 25, bottom: 50 };
+      }
+      
+      updateDimensions(width, height) {
+        // TODO: optimize based on whether its initial or viewport resizing?
+        // TODO: switch to using computed properties?
+      
+        // called in response to update in div's boundingRect size
+        
+        svg.attrs(this._svg, {
+          width: width,
+          height: height
+        });
+        
+        const margin = this.margin;
+        
+        const contentWidth = width - margin.left - margin.right;
+        const contentHeight = height - margin.top - margin.bottom;
+                
+        // top & bottom mask extend edge-to-edge
+        const topMask = this._svg.querySelector('.top.mask');
+        svg.attrs(topMask, {
+          transform: svg.translate(0, 0),
+          width: width,
+          height: margin.top
+        });
+        
+        const bottomMask = this._svg.querySelector('.bottom.mask');
+        svg.attrs(bottomMask, {
+          transform: svg.translate(0, height - margin.bottom),
+          width: width,
+          height: margin.bottom
+        });
+        
+        // side masks extend to edge of top & bottom mask
+        const leftMask = this._svg.querySelector('.left.mask');
+        svg.attrs(leftMask, {
+          transform: svg.translate(0, margin.top),
+          width: margin.left,
+          height: contentHeight
+        });
+        
+        const rightMask = this._svg.querySelector('.right.mask');
+        svg.attrs(rightMask, {
+          transform: svg.translate(width - margin.right, margin.top),
+          width: margin.right,
+          height: contentHeight
+        });
+        
+        // panels are all fit around content area
+        const topPanel = this._svg.querySelector('.top.panel');
+        svg.attrs(topPanel, {
+          transform: svg.translate(margin.left, 0)
+        });
+        
+        const bottomPanel = this._svg.querySelector('.bottom.panel');
+        svg.attrs(bottomPanel, {
+          transform: svg.translate(margin.left, height - margin.bottom)
+        });
+        
+        const leftPanel = this._svg.querySelector('.left.panel');
+        svg.attrs(leftPanel, {
+          transform: svg.translate(0, margin.top)
+        });
+        
+        const rightPanel = this._svg.querySelector('.right.panel');
+        svg.attrs(rightPanel, {
+          transform: svg.translate(width - margin.right, margin.top)
+        });
+        
+        const content = this._svg.querySelector('.content');
+        svg.attrs(content, {
+          transform: svg.translate(margin.left, margin.top),
+          height: contentHeight,
+          width: contentWidth
+        });
       }
       
       set xAxis(xAxis) {
@@ -521,7 +624,7 @@ const polygraph = (() => {
       
       const shadowRoot = this.attachShadow({mode: 'open'});
       
-      this._viewport = new viewport.SvgViewportMixin();
+      this._viewport = new viewport.SvgViewport();
       shadowRoot.appendChild(this._viewport.element);
     }
   }
@@ -554,8 +657,9 @@ const polygraph = (() => {
         log('connectedCallback', this);
         
         this._viewport.connect(this);
+        this._viewport.mixinViewportAttributes(this);
         
-        this._viewport.connectXAxis(this);
+        this._viewport.mixinXAxisAttributes(this);
         this._viewport.yAxis = new timeline.SwimlaneAxis();
         
         timeline.whenDefined().then(() => this.render());
