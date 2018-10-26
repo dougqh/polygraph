@@ -274,7 +274,11 @@ const polygraph = (() => {
     svg.ns = 'http://www.w3.org/2000/svg';
     
     svg.create = (tag, optAttrs) => {
-      return document.createElementNS(svg.ns, tag);
+      var element = document.createElementNS(svg.ns, tag);
+      if ( typeof optAttrs !== 'undefined' ) {
+        svg.attrs(element, optAttrs);
+      }
+      return element;
     };
     
     svg.attr = (element, attr, value) => {
@@ -341,7 +345,13 @@ const polygraph = (() => {
       createPixelCalculator(numPixels) {
         const transRange = this.translateRangeObj(this.range);
         const transDiff = (transRange.max - transRange.min);
-        const scaleFactor = transDiff / numPixels;
+        const scaleFactor = numPixels / transDiff;
+        
+        console.log('createPixelCalculator', {
+          transRange: transRange,
+          transDiff: transDiff,
+          scaleFactor: scaleFactor
+        });
         
         return (val) => {
           const transDelta = this.translate(val) - transRange.min;
@@ -619,8 +629,6 @@ const polygraph = (() => {
         const x1 = viewport.toXPixel(xRange.min);
         const x2 = viewport.toXPixel(xRange.max);
         const y = viewport.toYPixel(index);
-        
-        console.log(x1, y, x2, y);
         
         viewport.svgElement.appendChild(svg.line(x1, y, x2, y));
       }
