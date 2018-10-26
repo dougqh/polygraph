@@ -399,9 +399,11 @@ const polygraph = (() => {
     const log = noLog;
     
     viewport.AbstractAxisModel = class {
-      constructor(viewport, optAxis) {
-        this._axis = optAxis || new axes.NumericAxis();
+      constructor(viewport, opts) {
+        this._axis = opts.axis || new axes.NumericAxis();
         this._scale = 1;
+        
+        this._invert = opts.invert || false;
         
         this._viewports = [];
         this.addViewport(viewport);
@@ -440,21 +442,36 @@ const polygraph = (() => {
         const transRange = this.translateRangeObj(this.range);
         const transDiff = (transRange.max - transRange.min);
         const scaleFactor = numPixels / transDiff;
-        
+         
         console.log('createPixelCalculator', {
           transRange: transRange,
           transDiff: transDiff,
           scaleFactor: scaleFactor
         });
-        
-        return (val) => {
-          const transDelta = this.translate(val) - transRange.min;
-          return transDelta * scaleFactor;
-        };
+
+        if ( this._invert ) {
+          return (val) => {
+            const transDelta = this.translate(val) - transRange.min;
+            return numPixels - transDelta * scaleFactor;
+          };
+        } else {
+          return (val) => {
+            const transDelta = this.translate(val) - transRange.min;
+            return transDelta * scaleFactor;
+          };
+        }
       }
     };
     
     viewport.XAxisModel = class extends viewport.AbstractAxisModel {
+      static get INVERT_DEFAULT() { return false; }
+      
+      constructor(viewport, opts) {
+        opts.invert = opts.invert || false;
+        
+        super(viewport, opts);
+      }
+      
       get range() {
         const rangeBuilder = this.createRangeBuilder();
         this._viewports.forEach((viewport) => {
@@ -465,6 +482,14 @@ const polygraph = (() => {
     };
     
     viewport.YAxisModel = class extends viewport.AbstractAxisModel {
+      static get INVERT_DEFAULT() { return true; }
+    
+      constructor(viewport, opts) {
+        opts.invert = opts.invert || true;
+        
+        super(viewport, opts);
+      }
+    
       get range() {
         const rangeBuilder = this.createRangeBuilder();
         this._viewports.forEach((viewport) => {
@@ -483,8 +508,6 @@ const polygraph = (() => {
         fill: none;
       }
     `);
-    
-    console.log(styleTemplate);
     
     // Order is important for z-ordering
     // Content -- then masks over contents -- then panels over the masks
@@ -506,16 +529,22 @@ const polygraph = (() => {
       '</div>');
     
     viewport.SvgViewport = class {
-      constructor() {
+      constructor(opts) {
+        opts = opts || {};
+        
         this._style = document.importNode(styleTemplate.content, true).firstElementChild;
         this._div = document.importNode(viewportTemplate.content, true).firstElementChild;
         
         this._svg = this._div.querySelector('svg');
-        this._content = this._svg.querySelector('.content');        
+        this._content = this._svg.querySelector('.content');
         
         // TODO: Defer construction once sync is supported?
-        this._xAxisModel = new viewport.XAxisModel(this);
-        this._yAxisModel = new viewport.YAxisModel(this);
+        this._xAxisModel = new viewport.XAxisModel(this, { 
+          invert: opts.invertX || viewport.XAxisModel.INVERT_DEFAULT
+        });
+        this._yAxisModel = new viewport.YAxisModel(this, {
+          invert: opts.invertY || viewport.YAxisModel.INVERT_DEFAULT
+        });
       }
       
       get element() {
@@ -736,12 +765,12 @@ const polygraph = (() => {
   })();
     
   class AbstractViewer extends HTMLElement {
-    constructor() {
+    constructor(viewportOpts) {
       super();
       
       const shadowRoot = this.attachShadow({mode: 'closed'});
       
-      this._viewport = new viewport.SvgViewport();
+      this._viewport = new viewport.SvgViewport(viewportOpts);
       shadowRoot.appendChild(this._viewport.style);
       shadowRoot.appendChild(this._viewport.element);
     }
@@ -948,7 +977,7 @@ const polygraph = (() => {
       static get ELEMENT_NAME() { return 'pg-timeline-viewer'; }
       
       constructor() {
-        super();
+        super({ invertY: false });
       }
     
       connectedCallback() {
