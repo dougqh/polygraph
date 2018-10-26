@@ -2,6 +2,20 @@
 <html>
 <head><title>Timeline Prototype</title></head>
 <body>
+  <pg-graph-viewer width="1000px" height="400px">
+    <pg-series label="Series A">
+      <pg-point x="10" y="100"></pg-point>
+      <pg-point x="20" y="30"></pg-point>
+      <pg-point x="50" y="-30"></pg-point>
+      <pg-point x="75" y="0"></pg-point>
+      <pg-point x="100" y="50"></pg-point>
+      <pg-point x="200" y="30"></pg-point>
+      <pg-point x="250" y="-20"></pg-point>
+    </pg-series>
+  </pg-graph-viewer>
+
+  <br>
+
   <pg-timeline-viewer width="1000px" height="400px" x-axis="time">
     <pg-timeline>
       <pg-event x="20" label="Foo"></pg-event>
@@ -19,6 +33,99 @@ const polygraph = (() => {
   
   const noLog = () => {};
   
+  const html = (() => {
+    const html = {};
+    
+    html.create = (element) => {
+      return document.createElement(element);
+    };
+    
+    html.template = (...parts) => {
+      const template = document.createElement('template');
+      template.innerHTML = parts.join('');
+      return template;
+    };
+    
+    Object.freeze(html);
+    return html;
+  })();
+    
+  const svg = (() => {
+    const svg = {};
+    
+    svg.ns = 'http://www.w3.org/2000/svg';
+    
+    svg.create = (tag, optAttrs) => {
+      var element = document.createElementNS(svg.ns, tag);
+      if ( typeof optAttrs !== 'undefined' ) {
+        svg.attrs(element, optAttrs);
+      }
+      return element;
+    };
+    
+    svg.attr = (element, attr, value) => {
+      element.setAttributeNS(null, attr, value);
+    };
+    
+    svg.attrs = (element, attrs) => {
+      for (let attr in attrs ) {
+        element.setAttributeNS(null, attr, attrs[attr]);
+	  }
+    };
+    
+    svg.g = (optAttrs) => {
+      return svg.create('g', optAttrs);
+    };
+    
+    svg.line = (x1, y1, x2, y2, optAttrs) => {
+      const line = svg.create('line', optAttrs);
+      svg.attrs(line, {
+        x1: x1,
+        y1: y1,
+        x2: x2,
+        y2: y2
+      });
+      return line;
+    };
+    
+    svg.circle = (cx, cy, r, optAttrs) => {
+      const circle = svg.create('circle', optAttrs);
+      svg.attrs(circle, {
+        cx: cx,
+        cy: cy,
+        r: r
+      });
+      return circle;
+    };
+    
+    svg.polyline = (points, optAttrs) => {
+      const polyline = svg.create('polyline', optAttrs);
+      svg.attr(polyline, 'points', points);
+      return polyline;
+    };
+    
+    svg.translate = (x, y) => {
+      return 'translate(' + x + ' ' + y + ')';
+    };
+    
+    svg.PointsBuilder = class {
+      constructor() {
+        this._parts = [];
+      }
+      
+      add(x, y) {
+        this._parts.push(x + ',' + y);
+      }
+      
+      make() {
+        return this._parts.join(' ');
+      }
+    };
+    
+    Object.freeze(svg);
+    return svg;
+  })();
+  
   const compare = (lhs, rhs) => {
     if ( lhs < rhs ) {
       return -1;
@@ -28,7 +135,7 @@ const polygraph = (() => {
       return 1;
     }
   };
-        
+
   const ranges = (() => {
     const ranges = {};
     
@@ -178,7 +285,7 @@ const polygraph = (() => {
         this._element = element;
         this._prop = prop;
         
-        this._options = options;
+        this._options = options || {};
       }
       
       getter() {
@@ -268,41 +375,6 @@ const polygraph = (() => {
     return properties;
   })();
   
-  const svg = (() => {
-    const svg = {};
-    
-    svg.ns = 'http://www.w3.org/2000/svg';
-    
-    svg.create = (tag, optAttrs) => {
-      var element = document.createElementNS(svg.ns, tag);
-      if ( typeof optAttrs !== 'undefined' ) {
-        svg.attrs(element, optAttrs);
-      }
-      return element;
-    };
-    
-    svg.attr = (element, attr, value) => {
-      element.setAttributeNS(null, attr, value);
-    };
-    
-    svg.attrs = (element, attrs) => {
-      for (let attr in attrs ) {
-        element.setAttributeNS(null, attr, attrs[attr]);
-	  }
-    };
-    
-    svg.line = (x1, y1, x2, y2) => {
-      return svg.create('line', {x1: x1, y1: y1, x2: x2, y2: y2});
-    };
-    
-    svg.translate = (x, y) => {
-      return 'translate(' + x + ' ' + y + ')';
-    };
-    
-    Object.freeze(svg);
-    return svg;
-  })();
-  
   const viewport = (() => {
     const viewport = {};
     
@@ -384,33 +456,38 @@ const polygraph = (() => {
       }
     };
     
-    const viewportTemplate = (() => {
-      const template = document.createElement('template');
-      
-      // Order is important for z-ordering
-      // Content -- then masks over contents -- then panels over the masks
+    const styleTemplate = (() => {
       const html = [
-        '<div>',
-        '<svg class="viewport" xmlns="http://www.w3.org/2000/svg">',
-          '<g class="content"></g>',
-          
-          '<rect class="left mask"></rect>',
-          '<rect class="right mask"></rect>',
-          '<rect class="top mask"></rect>',
-          '<rect class="bottom mask"></rect>',
-          
-          '<g class="left panel"></g>',
-          '<g class="right panel"></g>',
-          '<g class="top panel"></g>',
-          '<g class="bottom panel"></g>',
-        '</svg>',
-        '</div>'
+        '<style>',
+        '.mask {',
+          'fill: gray',
+        '}',
+        '</style>'
       ];
       
       template.innerHTML = html.join('');
       
       return template;
-    })();
+    });
+    
+    // Order is important for z-ordering
+    // Content -- then masks over contents -- then panels over the masks
+    const viewportTemplate = html.template(
+      '<div>',
+      '<svg class="viewport" xmlns="http://www.w3.org/2000/svg">',
+        '<g class="content"></g>',
+          
+        '<rect class="left mask"></rect>',
+        '<rect class="right mask"></rect>',
+        '<rect class="top mask"></rect>',
+        '<rect class="bottom mask"></rect>',
+          
+        '<g class="left panel"></g>',
+        '<g class="right panel"></g>',
+        '<g class="top panel"></g>',
+        '<g class="bottom panel"></g>',
+      '</svg>',
+      '</div>');
     
     viewport.SvgViewport = class {
       constructor() {
@@ -428,12 +505,28 @@ const polygraph = (() => {
         return this._div;
       }
       
-      get boundingRect() {
-        return this._div.getBoundingClientRect();
+      get topPanel() {
+        return this._svg.querySelector('.top.panel');
       }
       
-      get svgElement() {
-        return this._svg;
+      get bottomPanel() {
+        return this._svg.querySelector('.bottom.panel');
+      }
+      
+      get leftPanel() {
+        return this._svg.querySelector('.left.panel');
+      }
+      
+      get rightPanel() {
+        return this._svg.querySelector('.right.panel');
+      }
+      
+      get content() {
+        return this._content;
+      }
+      
+      get boundingRect() {
+        return this._div.getBoundingClientRect();
       }
       
       connect(viewerElement) {
@@ -469,23 +562,25 @@ const polygraph = (() => {
       configureScale() {
         // start with zoom-to-fit calculation
         const boundingRect = this.boundingRect;
-        log('boundingRect', boundingRect);
         
-        this.updateDimensions(boundingRect.width, boundingRect.height);
-        
-        this._xPixelCalc = this._xAxisModel.createPixelCalculator(svgWidth);
-        this._yPixelCalc = this._yAxisModel.createPixelCalculator(svgHeight);
+        const contentDims = this.updateDimensions(boundingRect);
+                
+        this._xPixelCalc = this._xAxisModel.createPixelCalculator(contentDims.width);
+        this._yPixelCalc = this._yAxisModel.createPixelCalculator(contentDims.height);
       }
       
       get margin() {
         return { left: 100, right: 25, top: 25, bottom: 50 };
       }
       
-      updateDimensions(width, height) {
+      updateDimensions(boundingDims) {
         // TODO: optimize based on whether its initial or viewport resizing?
         // TODO: switch to using computed properties?
       
         // called in response to update in div's boundingRect size
+        
+        const width = boundingDims.width;
+        const height = boundingDims.height;
         
         svg.attrs(this._svg, {
           width: width,
@@ -554,6 +649,8 @@ const polygraph = (() => {
           height: contentHeight,
           width: contentWidth
         });
+        
+        return { width: contentWidth, height: contentHeight };
       }
       
       set xAxis(xAxis) {
@@ -616,19 +713,198 @@ const polygraph = (() => {
     Object.freeze(viewport);
     return viewport;
   })();
-
-  
+    
   class AbstractViewer extends HTMLElement {
     constructor() {
       super();
       
-      const shadowRoot = this.attachShadow({mode: 'open'});
+      const shadowRoot = this.attachShadow({mode: 'closed'});
       
       this._viewport = new viewport.SvgViewport();
       shadowRoot.appendChild(this._viewport.element);
     }
   }
 
+
+  const graph = (() => {
+    const graph = {};
+    
+    graph.GraphViewer = class extends AbstractViewer {
+      static get ELEMENT_NAME() { return 'pg-graph-viewer'; };
+      
+      constructor() {
+        super();
+      }
+      
+      connectedCallback() {
+        console.log('connectedCallback', this);
+        
+        this._viewport.connect(this);
+        this._viewport.mixinViewportAttributes(this);
+        
+        this._viewport.mixinXAxisAttributes(this);
+        this._viewport.mixinYAxisAttributes(this);
+        
+        graph.whenDefined().then(() => this.render());
+      }
+      
+      get series() {
+        return this.querySelectorAll(graph.Series.ELEMENT_NAME);
+      }
+      
+      get xRange() {
+        const series = this.series;
+        
+        const rangeBuilder = this._viewport.createXRangeBuilder();
+        for ( let i = 0; i < series.length; ++i ) {
+          rangeBuilder.recordRangeObj(series[i].xRange);
+        }
+        return rangeBuilder.make();
+      }
+      
+      get yRange() {
+        const series = this.series;
+        
+        const rangeBuilder = this._viewport.createXRangeBuilder();
+        for ( let i = 0; i < series.length; ++i ) {
+          rangeBuilder.recordRangeObj(series[i].yRange);
+        }
+        return rangeBuilder.make();
+      }
+      
+      render() {
+        this._viewport.configureScale();
+      
+        const series = this.series;
+        
+        for ( let i = 0; i < series.length; ++i ) {
+          series[i].render();
+        }
+      }
+    };
+    
+    graph.Series = class extends HTMLElement {
+      static get ELEMENT_NAME() { return 'pg-series'; };
+      
+      constructor() {
+        super();
+      }
+      
+      get _viewport() {
+        return this.parentNode._viewport;
+      }
+    
+      set label(label) {
+        return this.setAttribute('label', label);
+      }
+    
+      get label() {
+        this.getAttribute('label');
+      }
+      
+      get points() {
+        return this.querySelectorAll(graph.Point.ELEMENT_NAME);
+      }
+      
+      get xRange() {
+        const points = this.points;
+        
+        const rangeBuilder = this._viewport.createXRangeBuilder();
+        for ( let i = 0; i < points.length; ++i ) {
+          rangeBuilder.record(points[i].x);
+        }
+        return rangeBuilder.make();
+      }
+      
+      get yRange() {
+        const points = this.points;
+        
+        const rangeBuilder = this._viewport.createYRangeBuilder();
+        for ( let i = 0; i < points.length; ++i ) {
+          rangeBuilder.record(points[i].y);
+        }
+        return rangeBuilder.make();
+      }
+      
+      render() {
+        const seriesGroup = svg.g();
+        
+        const pointsBuilder = new svg.PointsBuilder();
+        
+        const points = this.points;
+        for ( let i = 0; i < points.length; ++i ) {
+          const xPx = this._viewport.toXPixel(points[i].x);
+          const yPx = this._viewport.toYPixel(points[i].y);
+          
+          pointsBuilder.add(xPx, yPx);
+          
+          seriesGroup.appendChild(svg.circle(xPx, yPx, 2));
+        }
+        
+        // prepend polyline to create lower z-order
+        const polyline = svg.polyline(pointsBuilder.make(), {
+          fill: 'none',
+          stroke: 'gray'
+        });
+        seriesGroup.prepend(polyline);
+        
+        this._viewport.content.appendChild(seriesGroup);
+      }
+    };
+    
+    graph.Point = class extends HTMLElement {
+      static get ELEMENT_NAME() { return 'pg-point'; }
+      
+      constructor() {
+        super();
+      }
+      
+      get _viewport() {
+        return this.parentNode._viewport;
+      }
+      
+      get x() {
+        return this._viewport.deserializeX(this.getAttribute('x'));
+      }
+      
+      set x(x) {
+        this.setAttribute('x', x);
+      }
+      
+      get y() {
+        return this._viewport.deserializeY(this.getAttribute('y'));
+      }
+      
+      set y(y) {
+        return this.setAttribute('y', y);
+      }
+    };
+    
+    graph.whenDefined = () => {
+      return Promise.all([
+        window.customElements.whenDefined(graph.GraphViewer.ELEMENT_NAME),
+        window.customElements.whenDefined(graph.Series.ELEMENT_NAME),
+        window.customElements.whenDefined(graph.Point.ELEMENT_NAME)        
+      ]);
+    };
+    
+    graph.init = () => {
+      window.customElements.define(
+        graph.GraphViewer.ELEMENT_NAME,
+        graph.GraphViewer);
+        
+      window.customElements.define(
+        graph.Series.ELEMENT_NAME,
+        graph.Series);
+        
+      window.customElements.define(
+        graph.Point.ELEMENT_NAME,
+        graph.Point);
+    };
+    
+    Object.freeze(graph);
+    return graph;
+  })();
   
   const timeline = (() => {
     const timeline = {};
@@ -685,6 +961,8 @@ const polygraph = (() => {
       
       render() {
         this._viewport.configureScale();
+        
+        console.log('render');
 
         const timelines = this.timelines;
         for ( let i = 0; i < timelines.length; ++i ) {
@@ -694,7 +972,7 @@ const polygraph = (() => {
     };
     
     timeline.Timeline = class extends HTMLElement {
-      static get ELEMENT_NAME() { return 'pg-timeline' };
+      static get ELEMENT_NAME() { return 'pg-timeline'; };
       
       constructor() {
         super();
@@ -734,12 +1012,16 @@ const polygraph = (() => {
         const x2 = viewport.toXPixel(xRange.max);
         const y = viewport.toYPixel(index);
         
-        viewport.svgElement.appendChild(svg.line(x1, y, x2, y));
+        const line = svg.line(x1, y, x2, y, {
+          stroke: 'gray'
+        });
+        
+        viewport.content.appendChild(line);
       }
     };
   
     timeline.TimelineEvent = class extends HTMLElement {
-      static get ELEMENT_NAME() { return 'pg-event' };
+      static get ELEMENT_NAME() { return 'pg-event'; };
       
       constructor() {
         super();
@@ -822,6 +1104,7 @@ const polygraph = (() => {
     
   polygraph.init = () => {
     timeline.init();
+    graph.init();
   };
   
   Object.freeze(polygraph);
