@@ -12,16 +12,28 @@
       <pg-point x="200" y="30"></pg-point>
       <pg-point x="250" y="-20"></pg-point>
     </pg-series>
+    
+    <pg-series label="Series B">
+      <pg-point x="10" y="50"></pg-point>
+      <pg-point x="20" y="15"></pg-point>
+      <pg-point x="50" y="-15"></pg-point>
+      <pg-point x="75" y="0"></pg-point>
+      <pg-point x="100" y="25"></pg-point>
+      <pg-point x="200" y="15"></pg-point>
+      <pg-point x="250" y="-10"></pg-point>
+    </pg-series>
   </pg-graph-viewer>
 
   <br>
 
+  <!--
   <pg-timeline-viewer width="1000px" height="400px" x-axis="time">
     <pg-timeline>
       <pg-event x="20" label="Foo"></pg-event>
       <pg-event start-x="25" end-x="30" label="Bar"></pg-event>
     </pg-timeline>
   </pg-timeline-viewer>
+  -->
 </body>
 <script>
 const polygraph = (() => {
@@ -43,6 +55,12 @@ const polygraph = (() => {
     html.template = (...parts) => {
       const template = document.createElement('template');
       template.innerHTML = parts.join('');
+      return template;
+    };
+    
+    html.styleTemplate = (...parts) => {
+      const template = document.createElement('template');
+      template.innerHTML = '<style>' + parts.join('') + '</style>';
       return template;
     };
     
@@ -456,19 +474,17 @@ const polygraph = (() => {
       }
     };
     
-    const styleTemplate = (() => {
-      const html = [
-        '<style>',
-        '.mask {',
-          'fill: gray',
-        '}',
-        '</style>'
-      ];
+    const styleTemplate = html.styleTemplate(`
+      .mask {
+        fill: lightgray;
+      }
       
-      template.innerHTML = html.join('');
-      
-      return template;
-    });
+      polyline {
+        fill: none;
+      }
+    `);
+    
+    console.log(styleTemplate);
     
     // Order is important for z-ordering
     // Content -- then masks over contents -- then panels over the masks
@@ -491,6 +507,7 @@ const polygraph = (() => {
     
     viewport.SvgViewport = class {
       constructor() {
+        this._style = document.importNode(styleTemplate.content, true).firstElementChild;
         this._div = document.importNode(viewportTemplate.content, true).firstElementChild;
         
         this._svg = this._div.querySelector('svg');
@@ -503,6 +520,10 @@ const polygraph = (() => {
       
       get element() {
         return this._div;
+      }
+      
+      get style() {
+        return this._style;
       }
       
       get topPanel() {
@@ -721,6 +742,7 @@ const polygraph = (() => {
       const shadowRoot = this.attachShadow({mode: 'closed'});
       
       this._viewport = new viewport.SvgViewport();
+      shadowRoot.appendChild(this._viewport.style);
       shadowRoot.appendChild(this._viewport.element);
     }
   }
