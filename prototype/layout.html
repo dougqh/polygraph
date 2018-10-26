@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>Timeline Prototype</title></head>
+<body>
+<div>
+<header>Heading</header>
+  <div style="width: 800px; height: 600px; border: 1px solid black;">
+  <svg width="800" height="600">
+    <g class="left-panel" transform="translate(0 25)">
+      <!-- height = svg.height - topPanel.height - bottomPanel.height -->
+      <rect x="0" y="0" width="100" height="525" fill="blue">
+    </g>
+    <g class="right-panel" transform="translate(775 25)">
+      <!-- height = svg.height - topPanel.height - bottomPanel.height -->
+      <rect x="0" y="0" width="25" height="525" fill="blue">
+    </g>
+    <g class="top-panel" transform="translate(100 0)">
+      <!-- width = svg.width - leftPanel.width - rightPanel.width -->
+      <rect x="0" y="0" width="675" height="25" fill="green"> 
+    </g>
+    <g class="bottom-panel" transform="translate(100 550)">
+      <!-- width = svg.width - leftPanel.width - rightPanel.width -->
+      <rect x="0" y="0" width="675" height="50" fill="green">
+    </g>
+    <g class="content" transform="translate(100 25)">
+      <!-- height = 525 width = 675 -->
+      <line x1="10" y1="50" x2="500" y2="400" stroke="black">
+    </g>
+  </svg>
+  </div>
+</div>
+
+</body>
