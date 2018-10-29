@@ -661,7 +661,7 @@ const polygraph = (() => {
         
         const contentWidth = width - margin.left - margin.right;
         const contentHeight = height - margin.top - margin.bottom;
-                
+        
         // top & bottom mask extend edge-to-edge
         const topMask = this._svg.querySelector('.top.mask');
         svg.attrs(topMask, {
@@ -782,6 +782,23 @@ const polygraph = (() => {
     
     Object.freeze(viewport);
     return viewport;
+  })();
+  
+  const components = (() => {
+    const components = {};
+    
+    components.XAxisRender = class {
+      render(viewport) {
+      }
+    };
+    
+    components.YAxisRender = class {
+      render(viewport) {
+      }
+    };
+    
+    Object.freeze(components);
+    return components;
   })();
   
   const viewer = (() => {
