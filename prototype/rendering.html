@@ -1,0 +1,385 @@
+<!-- DOCTYPE html -->
+<html>
+<head><title>hello</title></head>
+<script>
+function str(value) {
+  return "" + value;
+}
+
+class NoNamespaceHelper {
+  create(tag) {
+    return document.createElement(tag);
+  }
+  
+  setAttribute(node, name, value) {
+    node.setAttribute(name, value);
+  }
+}
+
+class NamespaceHelper {
+  constructor(_namespace) {
+    this._namespace = _namespace;
+  }
+  
+  create(tag) {
+    return document.createElementNS(this._namespace, tag);
+  }
+  
+  setAttribute(node, name, value) {
+    node.setAttribute(name, value);
+  }
+}
+
+class AttributeTranslatingNamespaceHelper {
+  constructor(nsHelper, attrTranslationObj) {
+    this._nsHelper = nsHelper;
+    this._attrTranslationObj = attrTranslationObj;
+  }
+  
+  create(tag) {
+    return this._nsHelper.create(tag);
+  }
+  
+  setAttribute(node, name, value) {
+    const normalizedName = this._attrTranslationObj[name] || name;
+    return this._nsHelper.setAttribute(node, name, value);
+  }
+}
+
+class DocumentBuilder {
+  constructor(optNamespace, optAttrTranslateObj) {
+    this._curNode = null;
+    
+    let nsHelper;
+    if ( optNamespace ) {
+      nsHelper = new NamespaceHelper(optNamespace);
+    } else {
+      nsHelper = new NoNamespaceHelper();
+    }
+    
+    if ( optAttrTranslateObj ) {
+      nsHelper = new AttributeTranslatingNamespaceHelper(nsHelper, optAttrTranslateObj);
+    }
+    
+    this._nsHelper = nsHelper;
+    
+    this._fragment = document.createDocumentFragment();
+    this._leaf = false;
+  }
+  
+  _open(tag) {
+    if ( this._leaf ) this.close();
+  
+    const newNode = this._nsHelper.create(tag);
+    
+    if ( !this._curNode ) {
+      this._fragment.appendChild(newNode);
+    } else {
+      this._curNode.appendChild(newNode);
+    }
+    this._curNode = newNode;
+    
+    return this;
+  }
+
+  open(tag, optContents) {
+    this._open(tag);
+    
+    if ( optContents) this.contents(optContents);
+    
+    return this;
+  }
+  
+  leaf(tag) {
+    this._open(tag);
+    this._leaf = true;
+    return this;
+  }
+  
+  id(id) {
+    this._curNode.id = id;
+  }
+  
+  _plainAttr(name, value) {
+    this._curNode.setAttribute(name, str(value));
+    
+    return this;
+  }
+
+  attr(name, value) {
+    this._nsHelper.setAttribute(this._curNode, name, value);
+  }
+  
+  attrs(attrsObj) {
+    for ( let name in attrsObj ) {
+      this._nsHelper.setAttribute(this._curNode, name, attrsObj[name]);
+    }
+    
+    return this;
+  }
+  
+  datum(name, value) {
+    // TODO: Use something else if available
+    return this._plainAttr('data-' + name, value);
+  }
+  
+  data(dataObj) {
+    for ( let name in dataObj ) {
+      this._plainAttr('data-'+ name, value);
+    }
+    
+    return this;
+  }
+  
+  class_(class_) {
+    this._curNode.classList.add(class_);
+    
+    return this;
+  }
+  
+  classes(...classes) {
+    this._curNode.classList.add(classes);
+    
+    return this; 
+  }
+  
+  style(name, value) {
+    this._curNode.style[name] = value;
+    
+    return this;
+  }
+  
+  styles(styleObj) {
+    for ( const name in styleObj ) {
+      this._curNode.style[name] = styleObj[name];
+    }
+    
+    return this;
+  }
+  
+  contents(contents) {
+    if ( typeof contents === 'function' ) {
+      const results = contents.apply(this);
+      if ( results ) this._text(results);
+    } else {
+      this._text(contents);
+    }
+  
+    this.close();
+    
+    return this;
+  }
+  
+  textContents(value) {
+    this.text(value);
+
+    this.close();
+    
+    return this;
+  }
+  
+  text(value) {
+    if ( typeof value === 'function' ) {
+      const result = value.apply();
+      this._text(result);
+    } else {
+      this._text(result);
+    }
+    
+    return this;
+  }
+  
+  _text(value) {
+    this._curNode.appendChild(document.createTextNode(value));
+    
+    return this;
+  }
+  
+  close(tag) {
+    this._curNode = this._curNode.parentElement;
+    this._leaf = false;
+    
+    return this;
+  }
+  
+  get() {
+    return this._fragment;
+  }
+  
+  appendTo(node) {
+    node.appendChild(this._fragment);
+  }
+}
+
+class HtmlBuilder {
+  constructor() {
+    this._docBuilder = new DocumentBuilder();
+  }
+  
+  open(tag, optContents) {
+    this._docBuilder.open(tag, optContents);
+    return this;
+  }
+  
+  table(optContents) {
+    return this.open('table', optContents);
+  }
+  
+  tbody(optContents) {
+    return this.open('tbody', optConents);
+  }
+  
+  tr(optContents) {
+    return this.open('tr', optContents);
+  }
+  
+  th(optContents) {
+    return this.open('th', optContents);
+  }
+  
+  td(optContents) {
+    return this.open('td', optContents);
+  }
+  
+  get() {
+    return this._docBuilder.get();
+  }
+  
+  appendTo(node) {
+    this._docBuilder.appendTo(node);
+  }
+}
+
+const svgAttrTranslation = {
+  strokeWidth: 'stroke-width'
+};
+
+class SvgBuilder {
+  constructor() {
+    this._docBuilder = new DocumentBuilder(
+      'http://www.w3.org/2000/svg',
+      svgAttrTranslation);
+  }
+  
+  open(tag, optContents) {
+    this._docBuilder.open(tag, optContents);
+    return this;
+  }
+  
+  attrs(attrsObj) {
+    return this._docBuilder.attrs(attrsObj);
+  }
+  
+  leaf(tag, optAttrsObj) {
+    this._docBuilder.leaf(tag);
+    if ( optAttrsObj ) this._docBuilder.attrs(optAttrsObj);
+    
+    return this;
+  }
+  
+  g(optContents) {
+    return this.open('g', optContents);
+  }
+  
+  circle(optAttrsObj) {
+    return this.leaf('circle', optAttrsObj);
+  }
+  
+  line(optAttrsObj) {
+    return this.leaf('line', optAttrsObj);
+  }
+  
+  rect(optAttrsObj) {
+    return this.leaf('rect', optAttrsObj);
+  }
+  
+  get() {
+    return this._docBuilder.get();
+  }
+  
+  appendTo(node) {
+    this._docBuilder.appendTo(node);
+  }
+}
+</script>
+<body>
+<svg id='svg' width='1000' height='600'></svg>
+</body>
+
+<script>
+const svg = new SvgBuilder();
+
+// sky
+svg.rect({
+  x: 0, y: 0,
+  width: 1000, height: 400,
+  fill: 'blue'});
+
+// ground
+svg.rect({
+  x: 0, y: 400,
+  width: 1000, height: 200,
+  fill: 'tan'});
+
+// snowman body
+
+svg.circle({
+  cx: 180, cy: 500, r: 120,
+  fill: 'white',
+  stroke: 'black', strokeWidth: '1px'
+});
+   
+svg.circle({
+  cx: 180, cy: 340, r: 100,
+  fill: 'white',
+  stroke: 'black', strokeWidth: '1px'
+});
+   
+// head
+svg.circle({
+  cx: 180, cy: 200, r: 80,
+  fill: 'white',
+  stroke: 'black', strokeWidth: '1px'
+});
+
+svg.circle({
+  cx: 160, cy: 175, r: 20,
+  fill: 'white',
+  stroke: 'black', strokeWidth: '1px'
+});
+svg.circle({cx: 160, cy: 185, r: 5, fill: 'black'});
+
+svg.circle({
+  cx: 240, cy: 175, r: 20,
+  fill: 'white',
+  stroke: 'black', strokeWidth: '1px'});
+svg.circle({cx: 240, cy: 185, r: 5, fill: 'black'});
+
+svg.circle({
+  cx: 200, cy: 225, r: 20,
+  fill: 'red',
+  stroke: 'black', strokeWidth: '1px'});
+
+  
+// tree
+svg.rect({
+  x: 700, y: 150,
+  width: 100, height: 400,
+  fill: 'brown',
+  stroke: 'black', strokeWidth: '1px'
+});
+  
+svg.circle({
+  cx: 750, cy: 150, r: 175,
+  fill: 'green',
+  stroke: 'black', strokeWidth: '1px'
+});
+
+
+
+svg.appendTo(document.getElementById('svg'));
+
+</script>
+<!-- Novogorda -->
+</html>
+  
