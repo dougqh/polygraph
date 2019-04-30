@@ -2,21 +2,13 @@
 <html>
 <head><title>hello</title></head>
 <script>
-function str(value) {
-  return "" + value;
-}
-
-class NoNamespaceHelper {
+class NoNamespaceElementHelper {
   create(tag) {
     return document.createElement(tag);
   }
-  
-  setAttribute(node, name, value) {
-    node.setAttribute(name, value);
-  }
 }
 
-class NamespaceHelper {
+class NamespaceElementHelper {
   constructor(_namespace) {
     this._namespace = _namespace;
   }
@@ -24,53 +16,66 @@ class NamespaceHelper {
   create(tag) {
     return document.createElementNS(this._namespace, tag);
   }
-  
+}
+
+class SimpleAttributeHandler {
   setAttribute(node, name, value) {
+    this._setAttribute(node, name, value);
+  }
+  
+  _setAttribute(node, name, value) {
     node.setAttribute(name, value);
   }
 }
 
-class AttributeTranslatingNamespaceHelper {
-  constructor(nsHelper, attrTranslationObj) {
-    this._nsHelper = nsHelper;
-    this._attrTranslationObj = attrTranslationObj;
-  }
-  
-  create(tag) {
-    return this._nsHelper.create(tag);
+class ComplexAttributeHelper extends SimpleAttributeHandler {
+  constructor(options) {
+    super();
+    
+    this._attrTranslation = options.attrTranslation || {};
+    this._attrValueConverters = options.attrValueConverters || {};
   }
   
   setAttribute(node, name, value) {
-    const normalizedName = this._attrTranslationObj[name] || name;
-    return this._nsHelper.setAttribute(node, name, value);
+    const normalizedName = this._attrTranslation[name] || name;
+    
+    const converter = this._attrValueConverters[normalizedName];
+    if ( converter ) {
+      this._setAttribute(node, normalizedName, converter(value));
+    } else {
+      this._setAttribute(node, normalizedName, value);
+    }
   }
 }
 
 class DocumentBuilder {
-  constructor(optNamespace, optAttrTranslateObj) {
-    this._curNode = null;
+  constructor(options) {
+    options = options || {};
     
-    let nsHelper;
-    if ( optNamespace ) {
-      nsHelper = new NamespaceHelper(optNamespace);
+    if ( options.ns ) {
+      this._elementHelper = new NamespaceElementHelper(options.ns);
     } else {
-      nsHelper = new NoNamespaceHelper();
+      this._elementHelper = new NoNamespaceElementHelper();
     }
     
-    if ( optAttrTranslateObj ) {
-      nsHelper = new AttributeTranslatingNamespaceHelper(nsHelper, optAttrTranslateObj);
+    if ( options.attrTranslation || options.attrValueConverters ) {
+      this._attrHelper = new ComplexAttributeHelper({
+        attrTranslation: options.attrTranslation,
+        attrValueConverters: options.attrValueConverters
+      });
+    } else {
+      this._attrHelper = new SimpleAttributeHelper();
     }
-    
-    this._nsHelper = nsHelper;
     
     this._fragment = document.createDocumentFragment();
+    this._curNode = null;
     this._leaf = false;
   }
   
   _open(tag) {
     if ( this._leaf ) this.close();
   
-    const newNode = this._nsHelper.create(tag);
+    const newNode = this._elementHelper.create(tag);
     
     if ( !this._curNode ) {
       this._fragment.appendChild(newNode);
@@ -107,12 +112,12 @@ class DocumentBuilder {
   }
 
   attr(name, value) {
-    this._nsHelper.setAttribute(this._curNode, name, value);
+    this._attrHelper.setAttribute(this._curNode, name, value);
   }
   
   attrs(attrsObj) {
     for ( let name in attrsObj ) {
-      this._nsHelper.setAttribute(this._curNode, name, attrsObj[name]);
+      this._attrHelper.setAttribute(this._curNode, name, attrsObj[name]);
     }
     
     return this;
@@ -164,7 +169,8 @@ class DocumentBuilder {
     } else {
       this._text(contents);
     }
-  
+    
+    if ( this._leaf ) this.close();
     this.close();
     
     return this;
@@ -250,24 +256,102 @@ class HtmlBuilder {
   }
 }
 
-const svgAttrTranslation = {
+class TransformBuilder {
+  constructor() {
+    this._fragments = [];
+  }  
+  
+  translate(translationObj) {
+    if ( Array.isArray(translationObj) ) {
+      this._fragments.push('translate(', translationObj.join(','), ')');
+    } else if ( typeof translationObj === 'object' ) {
+      this._fragments.push(
+        'translate(',
+        translationObj.x || 0,
+        ',',
+        translateObj.y || 0,
+        ')');
+    } else {
+      this._fragments.push('translate(', translationObj, ')');
+    }
+    
+    return this;
+  }
+  
+  rotate(rotationObj) {
+    if ( Array.isArray(rotationObj) ) {
+      this._fragments.push('rotate(', rotationObj.join(','), ')');
+    } else if ( typeof rotationObj === 'object' ) {
+      this._fragments.push(
+        'rotate(',
+        rotationObj.a || 0,
+        ',',
+        rotationObj.x || 0,
+        ',',
+        rotationObj.y || 0,
+        ')');
+    } else {
+      this._fragments.push('rotate(', rotationObj, ')');
+    }
+    
+    return this;
+  }
+  
+  make() {
+    return this._fragments.join('');
+  }
+}
+
+const svg = {};
+
+svg.ns = 'http://www.w3.org/2000/svg';
+
+svg.attrTranslation = {
   strokeWidth: 'stroke-width'
+};
+
+svg.attrValueConverters = {
+  transform: (value) => {
+    if ( typeof value !== 'object' ) return value;
+    const transformObj = value;
+    
+    const transBuilder = new TransformBuilder();
+    if ( transformObj.translate ) {
+      transBuilder.translate(transformObj.translate);
+    }
+    
+    if ( transformObj.rotate ) {
+      transformObj.rotate(transformObj.rotate);
+    }    
+    return transBuilder.make();
+  }
 };
 
 class SvgBuilder {
   constructor() {
-    this._docBuilder = new DocumentBuilder(
-      'http://www.w3.org/2000/svg',
-      svgAttrTranslation);
+    this._docBuilder = new DocumentBuilder({
+      ns: svg.ns,
+      attrTranslation: svg.attrTranslation,
+      attrValueConverters: svg.attrValueConverters
+    });
   }
   
   open(tag, optContents) {
     this._docBuilder.open(tag, optContents);
+    
+    return this;
+  }
+  
+  attr(name, value) {
+    this._docBuilder.attr(name, value);
+    
     return this;
   }
   
   attrs(attrsObj) {
-    return this._docBuilder.attrs(attrsObj);
+    this._docBuilder.attrs(attrsObj);
+    
+    return this;
   }
   
   leaf(tag, optAttrsObj) {
@@ -277,8 +361,35 @@ class SvgBuilder {
     return this;
   }
   
+  contents(contents) {
+    this._docBuilder.contents(contents);
+    
+    return this;
+  }
+  
   g(optContents) {
     return this.open('g', optContents);
+  }
+  
+  transform(value) {
+    return this.attr('transform', value);
+  }
+  
+  translate(...translation) {
+    translation = typeof translation[0] === 'object' ?
+      translation[0] :
+      translation;
+  
+    // could optimize this to skip translations later
+    return this.attr('transform', { translate: translation });
+  }
+  
+  rotate(...rotation) {
+    rotation = typeof rotation[0] === 'object' ?
+      rotation[0] :
+      rotation;
+      
+    return this.attr('rotate', { rotate: rotation });
   }
   
   circle(optAttrsObj) {
@@ -291,6 +402,10 @@ class SvgBuilder {
   
   rect(optAttrsObj) {
     return this.leaf('rect', optAttrsObj);
+  }
+  
+  points(points) {
+    this.attr('points', points);
   }
   
   get() {
@@ -307,6 +422,7 @@ class SvgBuilder {
 </body>
 
 <script>
+(() => {
 const svg = new SvgBuilder();
 
 // sky
@@ -322,63 +438,66 @@ svg.rect({
   fill: 'tan'});
 
 // snowman body
+svg.g().translate(180, 150).contents(() => {
+  svg.circle({
+    cx: 0, cy: 350, r: 120,
+    fill: 'white',
+    stroke: 'black', strokeWidth: '1px'
+  });
+ 
+  svg.circle({
+    cx: 0, cy: 190, r: 100,
+    fill: 'white',
+    stroke: 'black', strokeWidth: '1px'
+  });
+ 
+  // head
+  svg.circle({
+    cx: 0, cy: 50, r: 80,
+    fill: 'white',
+    stroke: 'black', strokeWidth: '1px'
+  });
 
-svg.circle({
-  cx: 180, cy: 500, r: 120,
-  fill: 'white',
-  stroke: 'black', strokeWidth: '1px'
-});
-   
-svg.circle({
-  cx: 180, cy: 340, r: 100,
-  fill: 'white',
-  stroke: 'black', strokeWidth: '1px'
-});
-   
-// head
-svg.circle({
-  cx: 180, cy: 200, r: 80,
-  fill: 'white',
-  stroke: 'black', strokeWidth: '1px'
-});
+  svg.circle({
+    cx: -20, cy: 25, r: 20,
+    fill: 'white',
+    stroke: 'black', strokeWidth: '1px'
+  });
+  svg.circle({cx: -20, cy: 35, r: 5, fill: 'black'});
 
-svg.circle({
-  cx: 160, cy: 175, r: 20,
-  fill: 'white',
-  stroke: 'black', strokeWidth: '1px'
+  svg.circle({
+    cx: +60, cy: 25, r: 20,
+    fill: 'white',
+    stroke: 'black', strokeWidth: '1px'
+  });
+  svg.circle({cx: +60, cy: 35, r: 5, fill: 'black'});
+
+  svg.circle({
+    cx: +20, cy: 75, r: 20,
+    fill: 'red',
+    stroke: 'black', strokeWidth: '1px'
+  });
 });
-svg.circle({cx: 160, cy: 185, r: 5, fill: 'black'});
-
-svg.circle({
-  cx: 240, cy: 175, r: 20,
-  fill: 'white',
-  stroke: 'black', strokeWidth: '1px'});
-svg.circle({cx: 240, cy: 185, r: 5, fill: 'black'});
-
-svg.circle({
-  cx: 200, cy: 225, r: 20,
-  fill: 'red',
-  stroke: 'black', strokeWidth: '1px'});
 
   
 // tree
-svg.rect({
-  x: 700, y: 150,
-  width: 100, height: 400,
-  fill: 'brown',
-  stroke: 'black', strokeWidth: '1px'
-});
-  
-svg.circle({
-  cx: 750, cy: 150, r: 175,
-  fill: 'green',
-  stroke: 'black', strokeWidth: '1px'
-});
+svg.g().translate(700, 100).contents(() => {
+  svg.rect({
+    x: 0, y: 0,
+    width: 100, height: 400,
+    fill: 'brown',
+    stroke: 'black', strokeWidth: '1px'
+  });
 
-
+  svg.circle({
+    cx: 50, cy: 0, r: 175,
+    fill: 'green',
+   stroke: 'black', strokeWidth: '1px'
+  });
+});
 
 svg.appendTo(document.getElementById('svg'));
-
+})();
 </script>
 <!-- Novogorda -->
 </html>
