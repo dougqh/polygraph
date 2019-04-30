@@ -263,12 +263,12 @@ class TransformBuilder {
   
   translate(translationObj) {
     if ( Array.isArray(translationObj) ) {
-      this._fragments.push('translate(', translationObj.join(','), ')');
+      this._fragments.push('translate(', translationObj.join(' '), ')');
     } else if ( typeof translationObj === 'object' ) {
       this._fragments.push(
         'translate(',
         translationObj.x || 0,
-        ',',
+        ' ',
         translateObj.y || 0,
         ')');
     } else {
@@ -285,9 +285,9 @@ class TransformBuilder {
       this._fragments.push(
         'rotate(',
         rotationObj.a || 0,
-        ',',
+        ' ',
         rotationObj.x || 0,
-        ',',
+        ' ',
         rotationObj.y || 0,
         ')');
     } else {
@@ -299,6 +299,45 @@ class TransformBuilder {
   
   make() {
     return this._fragments.join('');
+  }
+}
+
+class PointsBuilder {
+  constructor() {
+    this._fragments = [];
+  }
+  
+  point(...pt) {
+    if ( typeof pt[0] === 'object' ) {
+      this._fragments.push(pt.x + ',' + pt.y);
+    } else {
+      this._fragments.push(pt.join(' '));
+    }
+    return this;
+  }
+  
+  points(...points) {
+    if ( points.length == 1 && typeof points[0] === 'object' ) {
+      points = points[0];
+    }
+    return this._points(points);
+  }
+    
+  _points(points) {
+    console.log('points', points);
+    
+    points.forEach((pt) => {
+      if ( Array.isArray(pt) ) {
+        this._fragments.push(pt[0] + ',' + pt[1]);
+      } else {
+        this._fragments.push(pt.x + ',' + pt.y);
+      }
+    });
+    return this;
+  }
+  
+  make() {
+    return this._fragments.join(' ');
   }
 }
 
@@ -324,6 +363,35 @@ svg.attrValueConverters = {
       transformObj.rotate(transformObj.rotate);
     }    
     return transBuilder.make();
+  },
+  
+  points: (value) => {
+    if ( typeof value === 'object' ) {
+      const pointsArray = value;
+      
+      return new PointsBuilder().
+        _points(pointsArray).
+        make();
+    } else if ( typeof value === 'function' ) {
+      const pointsFn = value;
+      
+      // function can...
+      // - take a PointsBuilder
+      // - return an array of points
+      // - return a string of points
+      
+      const pointsBuilder = new PointsBuilder();
+      const points = pointsFn(pointsBuilder);
+      
+      if ( points ) {
+        // recursive call to sort out what was returned
+        return this.points(points); 
+      } else {
+        return pointsBuilder.make();
+      }
+    } else {
+      return value;
+    }
   }
 };
 
@@ -375,21 +443,12 @@ class SvgBuilder {
     return this.attr('transform', value);
   }
   
-  translate(...translation) {
-    translation = typeof translation[0] === 'object' ?
-      translation[0] :
-      translation;
-  
-    // could optimize this to skip translations later
-    return this.attr('transform', { translate: translation });
+  translate(translation) {
+    return this.transform({ translate: translation });
   }
   
-  rotate(...rotation) {
-    rotation = typeof rotation[0] === 'object' ?
-      rotation[0] :
-      rotation;
-      
-    return this.attr('rotate', { rotate: rotation });
+  rotate(rotation) {
+    return this.attr('rotate', rotation);
   }
   
   circle(optAttrsObj) {
@@ -404,8 +463,14 @@ class SvgBuilder {
     return this.leaf('rect', optAttrsObj);
   }
   
+  polyline(optPoints) {
+    this.leaf('polyline');
+    if ( optPoints ) this.points(optPoints);
+    return this;
+  }
+  
   points(points) {
-    this.attr('points', points);
+    return this.attr('points', points);
   }
   
   get() {
@@ -438,7 +503,7 @@ svg.rect({
   fill: 'tan'});
 
 // snowman body
-svg.g().translate(180, 150).contents(() => {
+svg.g().translate([180, 150]).contents(() => {
   svg.circle({
     cx: 0, cy: 350, r: 120,
     fill: 'white',
@@ -481,7 +546,7 @@ svg.g().translate(180, 150).contents(() => {
 
   
 // tree
-svg.g().translate(700, 100).contents(() => {
+svg.g().translate([700, 100]).contents(() => {
   svg.rect({
     x: 0, y: 0,
     width: 100, height: 400,
@@ -494,6 +559,11 @@ svg.g().translate(700, 100).contents(() => {
     fill: 'green',
    stroke: 'black', strokeWidth: '1px'
   });
+});
+
+svg.polyline([[20, 20], [60, 40], [80, 20], [100, 40]]).attrs({
+  fill: 'none',
+  stroke: 'orange', strokeWidth: '10px'
 });
 
 svg.appendTo(document.getElementById('svg'));
