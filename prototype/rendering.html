@@ -354,15 +354,15 @@ svg.attrValueConverters = {
     if ( typeof value !== 'object' ) return value;
     const transformObj = value;
     
-    const transBuilder = new TransformBuilder();
+    const transformBuilder = new TransformBuilder();
     if ( transformObj.translate ) {
-      transBuilder.translate(transformObj.translate);
+      transformBuilder.translate(transformObj.translate);
     }
     
     if ( transformObj.rotate ) {
-      transformObj.rotate(transformObj.rotate);
+      transformBuilder.rotate(transformObj.rotate);
     }    
-    return transBuilder.make();
+    return transformBuilder.make();
   },
   
   points: (value) => {
@@ -443,12 +443,20 @@ class SvgBuilder {
     return this.attr('transform', value);
   }
   
-  translate(translation) {
+  translate(...translation) {
+    translation = ( translation.length === 1 ) ?
+      translation[0]:
+      translation;
+    
     return this.transform({ translate: translation });
   }
   
-  rotate(rotation) {
-    return this.attr('rotate', rotation);
+  rotate(...rotation) {
+    rotation = ( rotation.length === 1 ) ?
+      rotation[0]:
+      rotation;
+    
+    return this.transform({ rotate: rotation });
   }
   
   circle(optAttrsObj) {
@@ -546,7 +554,7 @@ svg.g().translate([180, 150]).contents(() => {
 
   
 // tree
-svg.g().translate([700, 100]).contents(() => {
+svg.g().translate(700, 100).contents(() => {
   svg.rect({
     x: 0, y: 0,
     width: 100, height: 400,
@@ -561,7 +569,7 @@ svg.g().translate([700, 100]).contents(() => {
   });
 });
 
-svg.polyline([[20, 20], [60, 40], [80, 20], [100, 40]]).attrs({
+svg.polyline([[20, 20], [60, 40], [80, 20], [100, 40]]).rotate(45).attrs({
   fill: 'none',
   stroke: 'orange', strokeWidth: '10px'
 });
