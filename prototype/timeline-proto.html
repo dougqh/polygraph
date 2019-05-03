@@ -788,12 +788,26 @@ const polygraph = (() => {
     const components = {};
     
     components.XAxisRender = class {
-      render(viewport) {
+      renderRule(x, optLabel) {
+      }
+      
+      renderMajorTick(x, optLabel) {
+      }
+      
+      renderMinorTick(x) {
       }
     };
     
     components.YAxisRender = class {
-      render(viewport) {
+      renderRule(y, optLabel) {
+      
+      }
+      
+      renderMajorTick(x, optLabel) {
+      
+      }
+      
+      renderMinorTick(x) {
       }
     };
     

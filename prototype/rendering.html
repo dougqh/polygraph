@@ -314,11 +314,16 @@ class PointsBuilder {
     this._fragments = [];
   }
   
-  point(...pt) {
-    if ( typeof pt[0] === 'object' ) {
-      this._fragments.push(pt.x + ',' + pt.y);
+  // point(x, y)
+  // point([x, y])
+  // point({x: x, y: y})
+  point(ptOrX, optY) {
+    if ( typeof optY !== 'undefined' ) {
+      this._fragments.push(ptOrX + ',' + optY);
+    } else if ( Array.isArray(ptOrX) ) {
+      this._fragments.push(ptOrX.join(','));
     } else {
-      this._fragments.push(pt.join(' '));
+      this._fragments.push(ptOrX.x + ',' + ptOrX.y);
     }
     return this;
   }
@@ -340,6 +345,184 @@ class PointsBuilder {
         this._fragments.push(pt.x + ',' + pt.y);
       }
     });
+    return this;
+  }
+  
+  make() {
+    return this._fragments.join(' ');
+  }
+}
+
+class PathBuilder {
+  constructor() {
+    this._fragments = [];
+  }
+  
+  // M(x, y)
+  // M([x, y])
+  // M({x: x, y: y})
+  M(ptOrX, optY) {
+    this._fragments.push('M');
+    this._point(ptOrX, optY);
+    return this;
+  }
+  
+  // m(dx, dy)
+  // m([dx, dy])
+  // m({dx: dx, dy: dy})
+  m(deltaOrDx, optDy) {
+    this._fragments.push('m');
+    this._delta(deltaOrDx, optDy);
+    return this;
+  }
+
+  // L(x, y)
+  // L([x, y])
+  // L{x: x, y: y})
+  L(ptOrX, optY) {
+    this._fragments.push('L');
+    this._point(ptOrX, optY);
+    return this;
+  }
+
+  // l(dx, dy)
+  // l([dx, dy])
+  // l({dx: dx, dy: dy})
+  l(deltaOrDx, optDy) {
+    this._fragments.push('l');
+    this._delta(deltaOrDx, optDy);
+    return this;
+  }
+  
+  H(x) {
+    this._fragments.push('H', x);
+    return this
+  }
+  
+  h(dx) {
+    this._fragments.push('h', dx);
+    return this;
+  }
+  
+  V(y) {
+    this._fragments.push('V', y);
+    return this;
+  }
+  
+  v(y) {
+    this._fragments.push('v', y);
+    return this;
+  }
+  
+  Z() {
+    this._fragments.push('Z');
+    return this;
+  }
+  
+  z() {
+    this._fragments.push('z');
+    return this;
+  }
+  
+  C(cpt1, cpt2, pt) {
+    this._fragments.push('C');
+    this._pointObj(cpt1);
+    this._pointObj(cpt2);
+    this._pointObj(pt);
+    return this;
+  }
+  
+  c(cdelta1, cddelta2, delta) {
+    this._fragments.push('c');
+    this._deltaObj(cdelta1);
+    this._deltaObj(cdelta2);
+    this._deltaObj(delta);
+    return this;
+  }
+  
+  S(cpt2, pt) {
+    this._fragments.push('S');
+    this._pointObj(cpt2);
+    this._pointObj(pt);
+    return this;
+  }
+  
+  s(cdelta2, delta) {
+    this._fragments.push('s');
+    this._deltaObj(cdelta2);
+    this._deltaObj(delta);
+    return this;
+  }
+  
+  Q(cpt1, cpt2, pt) {
+    this._fragments.push('Q');
+    this._pointObj(cpt1);
+    this._pointObj(cpt2);
+    this._pointObj(pt);
+    return this;
+  }
+  
+  q(qdelta1, cddelta2, delta) {
+    this._fragments.push('q');
+    this._deltaObj(cdelta1);
+    this._deltaObj(cdelta2);
+    this._deltaObj(delta);
+    return this;
+  }
+  
+  T(cpt2, pt) {
+    this._fragments.push('T');
+    this._pointObj(cpt2);
+    this._pointObj(pt);
+    return this;
+  }
+  
+  t(cdelta2, delta) {
+    this._fragments.push('t');
+    this._deltaObj(cdelta2);
+    this._deltaObj(delta);
+    return this;
+  }
+  
+  // TODO: arcs
+  
+  _point(ptOrX, optY) {
+    if ( typeof optY !== 'undefined' ) {
+      this._fragments.push(ptOrX + ',' + optY);
+    } else if ( Array.isArray(ptOrX) ) {
+      this._fragments.push(ptOrX.join(','));
+    } else {
+      this._fragments.push(ptOrX.x + ',' + ptOrX.y);
+    }
+    return this;
+  }
+  
+  _pointObj(pt) {
+    if ( Array.isArray(pt) ) {
+      this._fragments.push(pt.join(','));
+    } else {
+      this._fragments.push(pt.x + ',' + pt.y);
+    }
+    return this;
+  }
+  
+  _delta(deltaOrDx, optDy) {
+    if ( typeof optDy !== 'undefined' ) {
+      this._fragments.push(deltaOrDx + ',' + optDy);
+    } else if ( Array.isArray(deltaOrDx) ) {
+      this._fragments.push(deltaOrDx.join(','));
+    } else {
+      this._fragments.push(deltaOrDx.dx + ',' + deltaOrDx.dy);
+    }
+    return this;
+  }
+  
+  _deltaObj(delta) {
+    if ( Array.isArray(delta) ) {
+      this._fragments.push(delta.join(','));
+    } else {
+      this._fragments.push(delta.x + ',' + delta.y);
+    }
     return this;
   }
   
