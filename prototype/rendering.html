@@ -1,6 +1,13 @@
 <!-- DOCTYPE html -->
 <html>
 <head><title>hello</title></head>
+<style>
+.squiggle {
+  stroke: red;
+  stroke-width: 10px;
+  fill: none;
+}
+</style>
 <script>
 class NoNamespaceElementHelper {
   create(tag) {
@@ -189,7 +196,7 @@ class DocumentBuilder {
       const result = value.apply();
       this._text(result);
     } else {
-      this._text(result);
+      this._text(value);
     }
     
     return this;
@@ -346,7 +353,10 @@ const svg = {};
 svg.ns = 'http://www.w3.org/2000/svg';
 
 svg.attrTranslation = {
-  strokeWidth: 'stroke-width'
+  strokeWidth: 'stroke-width',
+  textAnchor: 'text-anchor',
+  alignmentBaseline: 'alignment-baseline',
+  dominantBaseline: 'dominant-baseline'
 };
 
 svg.attrValueConverters = {
@@ -410,6 +420,13 @@ class SvgBuilder {
     return this;
   }
   
+  leaf(tag, optAttrsObj) {
+    this._docBuilder.leaf(tag);
+    if ( optAttrsObj ) this._docBuilder.attrs(optAttrsObj);
+    
+    return this;
+  }
+  
   attr(name, value) {
     this._docBuilder.attr(name, value);
     
@@ -422,9 +439,8 @@ class SvgBuilder {
     return this;
   }
   
-  leaf(tag, optAttrsObj) {
-    this._docBuilder.leaf(tag);
-    if ( optAttrsObj ) this._docBuilder.attrs(optAttrsObj);
+  class_(class_) {
+    this._docBuilder.class_(class_);
     
     return this;
   }
@@ -463,6 +479,10 @@ class SvgBuilder {
     return this.leaf('circle', optAttrsObj);
   }
   
+  ellipse(optAttrsObj) {
+    return this.leaf('ellipse', optAttrsObj);
+  }
+  
   line(optAttrsObj) {
     return this.leaf('line', optAttrsObj);
   }
@@ -477,8 +497,40 @@ class SvgBuilder {
     return this;
   }
   
+  polygon(optPoints) {
+    this.leaf('polygon');
+    if ( optPoints ) this.points(optPoints);
+    return this;
+  }
+  
   points(points) {
     return this.attr('points', points);
+  }
+  
+  // text()
+  // text(textContents)
+  // text(attrs, textContents)
+  text(opt1, opt2) {
+    this.leaf('text');
+    if ( opt2 ) {
+      this.attrs(opt1);
+      this.textContents(opt2);
+    } else if ( opt1 ) {
+      this.textContents(opt1);
+    }
+    return this;
+  }
+  
+  textContents(contents) {
+    return this._docBuilder.textContents(contents);
+  }
+  
+  a(href, optContents) {
+    this.leaf('a');
+    this.attr('href', href);
+    if ( optContents ) this.contents(optContents);
+    
+    return this;
   }
   
   get() {
@@ -565,14 +617,13 @@ svg.g().translate(700, 100).contents(() => {
   svg.circle({
     cx: 50, cy: 0, r: 175,
     fill: 'green',
-   stroke: 'black', strokeWidth: '1px'
+    stroke: 'black', strokeWidth: '1px'
   });
 });
 
-svg.polyline([[20, 20], [60, 40], [80, 20], [100, 40]]).rotate(45).attrs({
-  fill: 'none',
-  stroke: 'orange', strokeWidth: '10px'
-});
+svg.polyline([[20, 20], [60, 40], [80, 20], [100, 40]]).rotate(45).class_('squiggle');
+
+svg.text({x: 500, y: 500}, 'Hello World!');
 
 svg.appendTo(document.getElementById('svg'));
 })();
