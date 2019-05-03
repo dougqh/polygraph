@@ -2,10 +2,10 @@
 <html>
 <head><title>hello</title></head>
 <style>
-.squiggle {
-  stroke: red;
-  stroke-width: 10px;
-  fill: none;
+.background {
+  fill: white;
+  stroke: black;
+  stroke-width: 1px;
 }
 </style>
 <script>
@@ -276,7 +276,7 @@ class TransformBuilder {
         'translate(',
         translationObj.x || 0,
         ' ',
-        translateObj.y || 0,
+        translationObj.y || 0,
         ')');
     } else {
       this._fragments.push('translate(', translationObj, ')');
@@ -612,25 +612,26 @@ class SvgBuilder {
   
   attr(name, value) {
     this._docBuilder.attr(name, value);
-    
     return this;
   }
   
   attrs(attrsObj) {
     this._docBuilder.attrs(attrsObj);
-    
     return this;
   }
   
   class_(class_) {
     this._docBuilder.class_(class_);
-    
+    return this;
+  }
+  
+  classes(...classes) {
+    this._docBuilder.classes(...classes);
     return this;
   }
   
   contents(contents) {
     this._docBuilder.contents(contents);
-    
     return this;
   }
   
@@ -682,12 +683,14 @@ class SvgBuilder {
   
   polygon(optPoints) {
     this.leaf('polygon');
-    if ( optPoints ) this.points(optPoints);
+    if ( optPoints ) this.attr('points', optPoints);
     return this;
   }
   
-  points(points) {
-    return this.attr('points', points);
+  path(optD) {
+    this.left('path');
+    if ( optD ) this.attr('d', optD);
+    return this;
   }
   
   // text()
@@ -724,89 +727,63 @@ class SvgBuilder {
     this._docBuilder.appendTo(node);
   }
 }
+
 </script>
 <body>
-<svg id='svg' width='1000' height='600'></svg>
+<svg id='svg' width='1000' height='800'></svg>
 </body>
 
 <script>
 (() => {
+
+const dims = {
+  width: 800,
+  height: 600,
+  
+  padding: {
+    top: 75,
+    left: 100,
+    right: 100,
+    bottom: 75
+  }
+};
+
+dims.totalWidth = dims.width + dims.padding.left + dims.padding.right;
+dims.totalHeight = dims.height + dims.padding.top + dims.padding.bottom;
+
 const svg = new SvgBuilder();
 
-// sky
-svg.rect({
-  x: 0, y: 0,
-  width: 1000, height: 400,
-  fill: 'blue'});
+svg.g().
+  class_('content').
+  translate({x: dims.padding.left, y: dims.padding.top}).
+  contents(() => {});
 
-// ground
-svg.rect({
-  x: 0, y: 400,
-  width: 1000, height: 200,
-  fill: 'tan'});
-
-// snowman body
-svg.g().translate([180, 150]).contents(() => {
-  svg.circle({
-    cx: 0, cy: 350, r: 120,
-    fill: 'white',
-    stroke: 'black', strokeWidth: '1px'
-  });
- 
-  svg.circle({
-    cx: 0, cy: 190, r: 100,
-    fill: 'white',
-    stroke: 'black', strokeWidth: '1px'
-  });
- 
-  // head
-  svg.circle({
-    cx: 0, cy: 50, r: 80,
-    fill: 'white',
-    stroke: 'black', strokeWidth: '1px'
+svg.g().
+  classes('panel', 'left').
+  translate({x: 0, y: dims.padding.top}).
+  contents(() => {
+    svg.rect({width: dims.padding.left, height: dims.height}).class_('background');
   });
 
-  svg.circle({
-    cx: -20, cy: 25, r: 20,
-    fill: 'white',
-    stroke: 'black', strokeWidth: '1px'
+svg.g().classes('panel', 'right').
+  translate({x: dims.totalWidth - dims.padding.right, y: dims.padding.top}).
+  contents(() => {
+    svg.rect({width: dims.padding.right, height: dims.height}).class_('background');
   });
-  svg.circle({cx: -20, cy: 35, r: 5, fill: 'black'});
-
-  svg.circle({
-    cx: +60, cy: 25, r: 20,
-    fill: 'white',
-    stroke: 'black', strokeWidth: '1px'
-  });
-  svg.circle({cx: +60, cy: 35, r: 5, fill: 'black'});
-
-  svg.circle({
-    cx: +20, cy: 75, r: 20,
-    fill: 'red',
-    stroke: 'black', strokeWidth: '1px'
-  });
-});
-
   
-// tree
-svg.g().translate(700, 100).contents(() => {
-  svg.rect({
-    x: 0, y: 0,
-    width: 100, height: 400,
-    fill: 'brown',
-    stroke: 'black', strokeWidth: '1px'
+svg.g().classes('pannel', 'top').
+  translate({x: dims.padding.left, y: 0}).
+  contents(() => {
+    svg.rect({width: dims.width, height: dims.padding.top}).class_('background');;
   });
-
-  svg.circle({
-    cx: 50, cy: 0, r: 175,
-    fill: 'green',
-    stroke: 'black', strokeWidth: '1px'
+  
+svg.g().class_('pannel', 'bottom').
+  translate({x: dims.padding.left, y: dims.totalHeight - dims.padding.bottom}).
+  contents(() => {
+    svg.rect({width: dims.width, height: dims.padding.bottom}).class_('background');
   });
-});
-
-svg.polyline([[20, 20], [60, 40], [80, 20], [100, 40]]).rotate(45).class_('squiggle');
-
-svg.text({x: 500, y: 500}, 'Hello World!');
+  
+svg.g().class_('pannel').contents(() => {});
 
 svg.appendTo(document.getElementById('svg'));
 })();
