@@ -4,7 +4,7 @@
 <style>
 .background {
   fill: white;
-  stroke: black;
+  stroke: gray;
   stroke-width: 1px;
 }
 </style>
@@ -169,6 +169,10 @@ class DocumentBuilder {
     return this;
   }
   
+  empty() {
+    return this.close();
+  }
+  
   contents(contents) {
     if ( typeof contents === 'function' ) {
       const results = contents.apply(this);
@@ -221,45 +225,6 @@ class DocumentBuilder {
   
   appendTo(node) {
     node.appendChild(this._fragment);
-  }
-}
-
-class HtmlBuilder {
-  constructor() {
-    this._docBuilder = new DocumentBuilder();
-  }
-  
-  open(tag, optContents) {
-    this._docBuilder.open(tag, optContents);
-    return this;
-  }
-  
-  table(optContents) {
-    return this.open('table', optContents);
-  }
-  
-  tbody(optContents) {
-    return this.open('tbody', optConents);
-  }
-  
-  tr(optContents) {
-    return this.open('tr', optContents);
-  }
-  
-  th(optContents) {
-    return this.open('th', optContents);
-  }
-  
-  td(optContents) {
-    return this.open('td', optContents);
-  }
-  
-  get() {
-    return this._docBuilder.get();
-  }
-  
-  appendTo(node) {
-    this._docBuilder.appendTo(node);
   }
 }
 
@@ -630,6 +595,11 @@ class SvgBuilder {
     return this;
   }
   
+  empty() {
+    this._docBuilder.empty();
+    return this;
+  }
+  
   contents(contents) {
     this._docBuilder.contents(contents);
     return this;
@@ -730,41 +700,11 @@ class SvgBuilder {
 
 </script>
 <body>
-<svg id='svg' width='1000' height='800'></svg>
+<svg id='svg' width='1600' height='800'></svg>
 </body>
 
 <script>
 (() => {
-
-const dims = {
-  width: 800,
-  height: 600,
-  
-  padding: {
-    top: 75,
-    left: 100,
-    right: 100,
-    bottom: 75
-  }
-};
-
-dims.totalWidth = dims.width + dims.padding.left + dims.padding.right;
-dims.totalHeight = dims.height + dims.padding.top + dims.padding.bottom;
-
-const svg = new SvgBuilder();
-
-svg.g().
-  class_('content').
-  translate({x: dims.padding.left, y: dims.padding.top}).
-  contents(() => {});
-
-svg.g().
-  classes('panel', 'left').
-  translate({x: 0, y: dims.padding.top}).
-  contents(() => {
-    svg.rect({width: dims.padding.left, height: dims.height}).class_('background');
-  });
-
 svg.g().classes('panel', 'right').
   translate({x: dims.totalWidth - dims.padding.right, y: dims.padding.top}).
   contents(() => {
@@ -785,8 +725,72 @@ svg.g().class_('pannel', 'bottom').
   
 svg.g().class_('pannel').contents(() => {});
 
-svg.appendTo(document.getElementById('svg'));
-})();
+// svg.appendTo(document.getElementById('svg'));
+});
+
+document.addEventListener('DOMContentLoaded', (e) => { 
+  const svgEl = document.getElementById('svg');
+  
+  const svgBoundingRect = svgEl.getBoundingClientRect();
+  console.log(svgBoundingRect);
+  
+  const padding = {
+    top: 75,
+    left: 100,
+    right: 100,
+    bottom: 75
+  };
+  
+  const contentDims = {
+    width: svgBoundingRect.width - padding.left - padding.right,
+    height: svgBoundingRect.height - padding.top - padding.bottom
+  };
+
+  const svg = new SvgBuilder();
+
+  svg.g().class_('content').
+    translate({x: padding.left, y: padding.top}).
+    empty();
+
+  svg.g().classes('panel', 'left').
+    translate({x: 0, y: padding.top}).
+    contents(() => {
+      svg.rect({width: padding.left, height: contentDims.height}).class_('background');
+      
+      svg.g().empty();
+    });
+    
+  svg.g().classes('panel', 'right').
+    translate({x: padding.left + contentDims.width, y: padding.top}).
+    contents(() => {
+      svg.rect({width: padding.left + contentDims.width, height: contentDims.height}).
+        class_('background');
+        
+      svg.g().empty();
+    });
+    
+  svg.g().classes('panel', 'top').
+    translate({x: padding.left, y: 0}).
+    contents(() => {
+      svg.rect({width: contentDims.width, height: padding.top}).class_('background');
+      
+      svg.g().empty();
+    });
+    
+  svg.g().classes('panel', 'bottom').
+    translate({x: padding.left, y: padding.top + contentDims.height}).
+    contents(() => {
+      svg.rect({width: contentDims.width, height: padding.bottom}).class_('background');
+      
+      svg.g().empty();
+    });
+    
+  svg.g().class_('overlay').
+    translate({x: padding.left, y: 0}).
+    empty();
+    
+  svg.appendTo(svgEl);
+});
 </script>
 <!-- Novogorda -->
 </html>
