@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head><title>Custom Element Styling</title></head>
+
+<style>
+#viewport {
+  width: 100%;
+  height: 600px;
+}
+</style>
+
+<body>
+
+<polygraph-viewport id='viewport'>
+</polygraph-viewport>
+
+</body>
+
+<script>
+  
+class Viewport extends HTMLElement {
+  constructor() {
+    super();
+  }
+  
+  connectedCallback() {
+    const style = window.getComputedStyle(this);
+    console.log('width', style.width, 'height', style.height);
+  
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgEl.style.width = style.width;
+    svgEl.style.height = style.height;
+    
+    this.appendChild(svgEl);
+  }
+}
+
+window.customElements.define('polygraph-viewport', Viewport);
+
+</script>
+
+</html>
