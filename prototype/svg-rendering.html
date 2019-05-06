@@ -269,6 +269,16 @@ class TransformBuilder {
     return this;
   }
   
+  skewX(skewX) {
+    this._fragements.push('skewX(', skewX, ')');
+    return this;
+  }
+  
+  skewY(skewY) {
+    this._fragements.push('skewX(', skewX, ')');
+    return this;
+  }
+  
   make() {
     return this._fragments.join('');
   }
@@ -515,11 +525,18 @@ svg.attrValueConverters = {
     const transformBuilder = new TransformBuilder();
     if ( transformObj.translate ) {
       transformBuilder.translate(transformObj.translate);
-    }
-    
+    }    
     if ( transformObj.rotate ) {
       transformBuilder.rotate(transformObj.rotate);
-    }    
+    }
+    if ( transformObj.skewX ) {
+      transformBuilder.skewX(transformObj.skewX);
+    }
+    if ( transformObj.skewY ) {
+      transformBuilder.skewY(transformObj.skewY);
+    }
+    
+    
     return transformBuilder.make();
   },
   
