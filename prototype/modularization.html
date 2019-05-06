@@ -1,0 +1,20 @@
+<!-- DOCTYPE html -->
+<html>
+<head><title>Custom Element Styling Test</title></head>
+
+<script type='module' src='./polygraph.js'></script>
+
+<body>
+
+<polygraph-viewport id='viewport' width='1000' height='600'>
+</polygraph-viewport>
+
+</body>
+
+<script>
+import('./polygraph.js').then((polygraph) => {
+  polygraph.defineElements();
+});
+</script>
+
+</html>
