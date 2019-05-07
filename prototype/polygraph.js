@@ -113,17 +113,15 @@ class Viewport extends HTMLElement {
       return expr;
     }
 
-    // TODO: DQH
-    // current means of calculating is slightly incorrect, since width is percentage of parent element 
-    // and padding is percentage of this element
     this._svg.style.width = calcSum(style.width, style.paddingLeft, style.paddingRight);
     this._svg.style.height = calcSum(style.height, style.paddingTop, style.paddingBottom);
     
     this._svg.style.margin = style.margin;
     this._svg.style.border = style.border;
 
-    // Tried ResizeObserver to no avail, since it isn't widely support decided to listen to window instead.
-    // To avoid to many DOM updates, resizePanels checks if the bounding rect has changed.
+    // DQH: 2019 May - Tried ResizeObserver to no avail, since it isn't widely support 
+    // decided to listen to window instead.  To avoid too many DOM updates, resizePanels 
+    // checks if the bounding rect has changed.
     this.resizePanels();
     window.addEventListener('resize', () => this.resizePanels());
   }
