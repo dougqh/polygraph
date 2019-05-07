@@ -2,11 +2,20 @@
 <html>
 <head><title>Custom Element Styling Test</title></head>
 
-<script type='module' src='./polygraph.js'></script>
-
+<style>
+#viewport {
+  width: 95%;
+  height: 600px;
+  
+  padding: 50 50 50 100;
+  margin: 2.5%;
+  border: 1px solid black;
+}
+</style>
+  
 <body>
 
-<polygraph-viewport id='viewport' width='1000' height='600'>
+<polygraph-viewport id='viewport'>
 </polygraph-viewport>
 
 </body>
