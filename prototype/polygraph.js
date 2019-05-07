@@ -72,11 +72,7 @@ class Viewport extends HTMLElement {
   }
   
   static get observedAttributes() {
-    return ['width', 'height'];
-  }
-  
-  attributeChangedCallback(name, oldValue, newValue) {
-    this.updateDimensions();
+    return ['style', 'class'];
   }
   
   get computedStyle() {
@@ -93,15 +89,37 @@ class Viewport extends HTMLElement {
     if ( !style ) return;
     
     debug('viewport dims: ', [style.width, style.height]);
-        
-    const width = style.width !== 'auto' ? style.width : this.getAttribute('width');
-    const height = style.height !== 'auto' ? style.height : this.getAttribute('height');
+    
+    function calcSum(base, add1, add2) {
+      if ( base === 'auto' ) return 'auto';
+      
+      debug('calcSum ', base, add1, add2);
+      
+      let expr = `calc(${base}`;
+      if ( add1.endsWith('%') ) {
+        const prop1 = Number.parseFloat(add1, 10) / 100;
+        expr += ` + ${base} * ${prop1}`;
+      } else {
+        expr += ` + ${add1}`;
+      }
+      
+      if ( add2.endsWith('%') ) {
+        const prop2 = Number.parseFloat(add2, 10) / 100;
+        expr += ` + ${base} * ${prop2}`;
+      } else {
+        expr += ` + ${add2}`;
+      }
+      expr += ')';
+      
+      debug('expr', expr);
+      return expr;
+    }
 
     // TODO: DQH
     // current means of calculating is slightly incorrect, since width is percentage of parent element 
     // and padding is percentage of this element
-    this._svg.style.width = 'calc(' + [width, style.paddingLeft, style.paddingRight].join(' + ') + ')';
-    this._svg.style.height = 'calc(' + [height, style.paddingTop, style.paddingBottom].join(' + ') + ')';
+    this._svg.style.width = calcSum(style.width, style.paddingLeft, style.paddingRight);
+    this._svg.style.height = calcSum(style.height, style.paddingTop, style.paddingBottom);
     
     this._svg.style.margin = style.margin;
     this._svg.style.border = style.border;
