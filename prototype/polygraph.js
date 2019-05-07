@@ -1,6 +1,8 @@
 function debug(...parts) {
   console.log(...parts);
-}
+} 
+
+// ------ utils ------
 
 function template(...parts) {
   const template = document.createElement('template');
@@ -11,6 +13,17 @@ function template(...parts) {
 function translate(x, y) {
   return 'translate(' + x + ',' + y + ')';
 }
+
+const genId = (() => {
+  let idSeq = 0;
+  
+  return () => {
+    idSeq += 1;
+    return 'pg-internal-' + idSeq;
+  };
+})();
+
+// ------ viewport ------
 
 function computePadding(style, bounds) {
   function calcPixels(sizeSpec, pixels) {
@@ -36,19 +49,17 @@ function computePadding(style, bounds) {
 
 const viewportTemplate = template(
   '<svg class="polygraph-viewport" xmlns="http://www.w3.org/2000/svg">',
-    '<g class="content"></g>',
-          
-    '<rect class="left mask"></rect>',
-    '<rect class="right mask"></rect>',
-    '<rect class="top mask"></rect>',
-    '<rect class="bottom mask"></rect>',
-          
+    '<g class="underlay"></g>',
+    '<g class="content-container">',
+    '  <clipPath><rect></rect></clipPath>',
+    '  <g class="content"></g>',
+    '</g>',
+    '<g class="overlay"></g>',
+  
     '<g class="left panel"></g>',
     '<g class="right panel"></g>',
     '<g class="top panel"></g>',
     '<g class="bottom panel"></g>',
-  
-    '<g class="overlay"></g>',
   '</svg>'
 );
 
@@ -61,6 +72,11 @@ class Viewport extends HTMLElement {
     console.log(viewportTemplate.content);
     
     this._svg = document.importNode(viewportTemplate.content, true).firstElementChild;
+    
+    const contentContainer = this._svg.querySelector('.content-container');
+    const clipPathId = genId();
+    contentContainer.querySelector('clipPath').id = clipPathId;
+    contentContainer.querySelector('.content').setAttribute('clip-path', `url(#${clipPathId})`);
     
     this.appendChild(this._svg);
     this.after(this._svg);
@@ -151,64 +167,31 @@ class Viewport extends HTMLElement {
       width: svgBounds.width - padding.left - padding.right,
       height: svgBounds.height - padding.top - padding.bottom
     };
+
+    const underlay = this._svg.querySelector('.underlay');
+    underlay.setAttribute('transform', translate(padding.left, padding.top));
     
-    { // top
-      const topTransform = translate(padding.left, 0);
-      
-      const topMask = this._svg.querySelector('.top.mask');
-      topMask.setAttribute('transform', topTransform);
-      topMask.setAttribute('width', contentDims.width);
-      topMask.setAttribute('height', padding.top);
-            
-      const topPanel = this._svg.querySelector('.top.panel');
-      topPanel.setAttribute('transform', topTransform);
-    }
+    const content = this._svg.querySelector('.content-container');
+    content.setAttribute('transform', translate(padding.left, padding.top));
     
-    { // right
-      const rightTransform = translate(svgBounds.width - padding.right, padding.top);
-      
-      const rightMask = this._svg.querySelector('.right.mask');
-      rightMask.setAttribute('transform', rightTransform);
-      rightMask.setAttribute('width', padding.right);
-      rightMask.setAttribute('height', contentDims.height);
-      
-      const rightPanel = this._svg.querySelector('.right.panel');
-      rightPanel.setAttribute('transform', rightTransform);
-    }
+    const clippingRect = content.querySelector('clipPath rect');
+    clippingRect.setAttribute('width', contentDims.width);
+    clippingRect.setAttribute('height', contentDims.height);
     
-    { // bottom
-      const bottomTransform = translate(padding.left, svgBounds.height - padding.bottom);
-      
-      const bottomMask = this._svg.querySelector('.bottom.mask');
-      bottomMask.setAttribute('transform', bottomTransform);
-      bottomMask.setAttribute('width', contentDims.width);
-      bottomMask.setAttribute('height', padding.bottom);
-      
-      const bottomPanel = this._svg.querySelector('.bottom.panel');
-      bottomPanel.setAttribute('transform', bottomTransform);
-    }
+    const overlay = this._svg.querySelector('.overlay');
+    overlay.setAttribute('transform', translate(padding.left, padding.top));
     
-    { // left
-      const leftTransform = translate(0, padding.top);
+    const topPanel = this._svg.querySelector('.top.panel');
+    topPanel.setAttribute('transform', translate(padding.left, 0));
     
-      const leftMask = this._svg.querySelector('.left.mask');
-      leftMask.setAttribute('transform', leftTransform);
-      leftMask.setAttribute('width', padding.left);
-      leftMask.setAttribute('height', contentDims.height);
-          
-      const leftPanel = this._svg.querySelector('.left.panel');
-      leftPanel.setAttribute('transform', leftTransform);
-    }
+    const rightPanel = this._svg.querySelector('.right.panel');
+    rightPanel.setAttribute('transform', translate(svgBounds.width - padding.right, padding.top));
+
+    const bottomPanel = this._svg.querySelector('.bottom.panel');
+    bottomPanel.setAttribute('transform', translate(padding.left, svgBounds.height - padding.bottom));
     
-    { // content
-      const content = this._svg.querySelector('.content');
-      content.setAttribute('transform', translate(padding.left, padding.top));
-    }
-    
-    { // overlay
-      const overlay = this._svg.querySelector('.overlay');
-      overlay.setAttribute('transform', translate(padding.left, padding.top));
-    }
+    const leftPanel = this._svg.querySelector('.left.panel');
+    leftPanel.setAttribute('transform', translate(0, padding.top));
   }
 };
 
