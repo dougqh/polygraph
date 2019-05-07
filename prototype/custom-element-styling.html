@@ -6,6 +6,8 @@
 #viewport {
   width: 100%;
   height: 600px;
+  
+  custom-prop: foo;
 }
 </style>
 
@@ -30,6 +32,8 @@ class Viewport extends HTMLElement {
     const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svgEl.style.width = style.width;
     svgEl.style.height = style.height;
+    
+    console.log('custom-prop', svgEl.style['custom-prop']);
     
     this.appendChild(svgEl);
   }
