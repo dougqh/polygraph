@@ -8,6 +8,32 @@ function template(...parts) {
   return template;
 }
 
+function translate(x, y) {
+  return 'translate(' + x + ',' + y + ')';
+}
+
+function computePadding(style, bounds) {
+  function calcPixels(sizeSpec, pixels) {
+    const num = Number.parseFloat(sizeSpec, 10);
+    if ( num === 0 ) return 0;
+    
+    if ( sizeSpec.endsWith('px') ) {
+      return num;
+    } else if ( sizeSpec.endsWith('%') ) {
+      return pixels / 100 * num;
+    } else {
+      throw new Error('Unsupported size spec: ' + sizeSpec);
+    }
+  }
+  
+  return {
+    top: calcPixels(style.paddingTop, bounds.height),
+    right: calcPixels(style.paddingRight, bounds.width),
+    bottom: calcPixels(style.paddingBottom, bounds.height),
+    left: calcPixels(style.paddingLeft, bounds.width)
+  };
+}
+
 const viewportTemplate = template(
   '<svg class="polygraph-viewport" xmlns="http://www.w3.org/2000/svg">',
     '<g class="content"></g>',
@@ -38,6 +64,8 @@ class Viewport extends HTMLElement {
     
     this.appendChild(this._svg);
     this.after(this._svg);
+    
+    this._display = this.style.display;
     this.style.display = 'none';
     
     this.updateDimensions();
@@ -69,8 +97,11 @@ class Viewport extends HTMLElement {
     const width = style.width !== 'auto' ? style.width : this.getAttribute('width');
     const height = style.height !== 'auto' ? style.height : this.getAttribute('height');
 
-    this._svg.style.width = width;
-    this._svg.style.height = height;
+    // TODO: DQH
+    // current means of calculating is slightly incorrect, since width is percentage of parent element 
+    // and padding is percentage of this element
+    this._svg.style.width = 'calc(' + [width, style.paddingLeft, style.paddingRight].join(' + ') + ')';
+    this._svg.style.height = 'calc(' + [height, style.paddingTop, style.paddingBottom].join(' + ') + ')';
     
     this._svg.style.margin = style.margin;
     this._svg.style.border = style.border;
@@ -89,6 +120,25 @@ class Viewport extends HTMLElement {
     
     const svgBounds = this._svg.getBoundingClientRect();
     debug('bounds', svgBounds);
+    
+    const padding = computePadding(style, svgBounds);
+    debug('computed padding', padding);
+    
+    this._svg.querySelectorAll('.left').forEach((leftEl) => {
+      leftEl.setAttribute('transform', translate(0, padding.top));
+    });
+
+    this._svg.querySelectorAll('.top').forEach((topEl) => {
+      topEl.setAttribute('transform', translate(padding.left, 0));
+    });
+
+    this._svg.querySelectorAll('.right').forEach((rightEl) => {
+      rightEl.setAttribute('transform', translate(svgBounds.width - padding.right, 0), padding.top);
+    });
+    
+    this._svg.querySelectorAll('.bottom').forEach((bottomEl) => {
+      bottomEl.setAttribute('transform', translate(padding.left, svgBounds.height - padding.bottom));
+    });
   }
 };
 
