@@ -65,8 +65,9 @@ class Viewport extends HTMLElement {
     this.appendChild(this._svg);
     this.after(this._svg);
     
-    this._display = this.style.display;
     this.style.display = 'none';
+    
+    this._priorBounds = { width: -1, height: -1 };
     
     this.updateDimensions();
   }
@@ -93,8 +94,6 @@ class Viewport extends HTMLElement {
     function calcSum(base, add1, add2) {
       if ( base === 'auto' ) return 'auto';
       
-      debug('calcSum ', base, add1, add2);
-      
       let expr = `calc(${base}`;
       if ( add1.endsWith('%') ) {
         const prop1 = Number.parseFloat(add1, 10) / 100;
@@ -111,7 +110,6 @@ class Viewport extends HTMLElement {
       }
       expr += ')';
       
-      debug('expr', expr);
       return expr;
     }
 
@@ -123,40 +121,96 @@ class Viewport extends HTMLElement {
     
     this._svg.style.margin = style.margin;
     this._svg.style.border = style.border;
-        
-    if ( !this._resizeObserver ) {
-      this._resizeObserver = new ResizeObserver(() => this.resizePanels());
-      this._resizeObserver.observe(this._svg);
-      
-      this.resizePanels();
-    }
+
+    // Tried ResizeObserver to no avail, since it isn't widely support decided to listen to window instead.
+    // To avoid to many DOM updates, resizePanels checks if the bounding rect has changed.
+    this.resizePanels();
+    window.addEventListener('resize', () => this.resizePanels());
   }
   
   resizePanels() {
     const style = this.computedStyle; 
-    debug('padding', style.padding);
+    // debug('padding', style.padding);
     
     const svgBounds = this._svg.getBoundingClientRect();
-    debug('bounds', svgBounds);
+    // debug('bounds', svgBounds);
+    
+    const unchanged = 
+      ( this._priorBounds.width === svgBounds.width ) &&
+      ( this._priorBounds.height === svgBounds.height );
+      
+    if ( unchanged ) {
+      // debug('unchanged', this._priorBounds, svgBounds);
+      return;
+    }
+    this._priorBounds = svgBounds;
+
     
     const padding = computePadding(style, svgBounds);
-    debug('computed padding', padding);
+    // debug('computed padding', padding);
+        
+    const contentDims = {
+      width: svgBounds.width - padding.left - padding.right,
+      height: svgBounds.height - padding.top - padding.bottom
+    };
     
-    this._svg.querySelectorAll('.left').forEach((leftEl) => {
-      leftEl.setAttribute('transform', translate(0, padding.top));
-    });
-
-    this._svg.querySelectorAll('.top').forEach((topEl) => {
-      topEl.setAttribute('transform', translate(padding.left, 0));
-    });
-
-    this._svg.querySelectorAll('.right').forEach((rightEl) => {
-      rightEl.setAttribute('transform', translate(svgBounds.width - padding.right, 0), padding.top);
-    });
+    { // top
+      const topTransform = translate(padding.left, 0);
+      
+      const topMask = this._svg.querySelector('.top.mask');
+      topMask.setAttribute('transform', topTransform);
+      topMask.setAttribute('width', contentDims.width);
+      topMask.setAttribute('height', padding.top);
+            
+      const topPanel = this._svg.querySelector('.top.panel');
+      topPanel.setAttribute('transform', topTransform);
+    }
     
-    this._svg.querySelectorAll('.bottom').forEach((bottomEl) => {
-      bottomEl.setAttribute('transform', translate(padding.left, svgBounds.height - padding.bottom));
-    });
+    { // right
+      const rightTransform = translate(svgBounds.width - padding.right, padding.top);
+      
+      const rightMask = this._svg.querySelector('.right.mask');
+      rightMask.setAttribute('transform', rightTransform);
+      rightMask.setAttribute('width', padding.right);
+      rightMask.setAttribute('height', contentDims.height);
+      
+      const rightPanel = this._svg.querySelector('.right.panel');
+      rightPanel.setAttribute('transform', rightTransform);
+    }
+    
+    { // bottom
+      const bottomTransform = translate(padding.left, svgBounds.height - padding.bottom);
+      
+      const bottomMask = this._svg.querySelector('.bottom.mask');
+      bottomMask.setAttribute('transform', bottomTransform);
+      bottomMask.setAttribute('width', contentDims.width);
+      bottomMask.setAttribute('height', padding.bottom);
+      
+      const bottomPanel = this._svg.querySelector('.bottom.panel');
+      bottomPanel.setAttribute('transform', bottomTransform);
+    }
+    
+    { // left
+      const leftTransform = translate(0, padding.top);
+    
+      const leftMask = this._svg.querySelector('.left.mask');
+      leftMask.setAttribute('transform', leftTransform);
+      leftMask.setAttribute('width', padding.left);
+      leftMask.setAttribute('height', contentDims.height);
+          
+      const leftPanel = this._svg.querySelector('.left.panel');
+      leftPanel.setAttribute('transform', leftTransform);
+    }
+    
+    { // content
+      const content = this._svg.querySelector('.content');
+      content.setAttribute('transform', translate(padding.left, padding.top));
+    }
+    
+    { // overlay
+      const overlay = this._svg.querySelector('.overlay');
+      overlay.setAttribute('transform', translate(padding.left, padding.top));
+    }
   }
 };
 
