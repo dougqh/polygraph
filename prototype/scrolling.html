@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head><title>Scrolling</title></head>
+
+<style>
+  text {
+    text-anchor: middle;
+  }
+</style>
+
+<body>
+
+<svg width='800' height='600'>
+  <g class='content' transform='translate(0 0)'>
+    <path d='M 0 0 v 20 
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20
+      m 100 -20 v 20'
+      stroke='black' stroke-width='1px' />
+      
+    <text x='0' y='50'>0</text>
+    <text x='100' y='50'>100</text>
+    <text x='200' y='50'>200</text>
+    <text x='300' y='50'>300</text>
+    <text x='400' y='50'>400</text>
+    <text x='500' y='50'>500</text>
+    <text x='600' y='50'>600</text>
+    <text x='700' y='50'>700</text>
+    <text x='800' y='50'>800</text>
+    <text x='900' y='50'>900</text>
+    <text x='1000' y='50'>1000</text>    
+  </g>
+</svg>
+
+<div id='scroll-container' style='width: 800px; overflow-x: auto;'>
+  <div style='width: 1000px; height: 1px;'>&nbsp;</div>
+</div>
+
+</body>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const scrollContainer = document.querySelector('#scroll-container');
+  
+  const contentPane = document.querySelector('.content');
+  
+  scrollContainer.addEventListener('scroll', (e) => {
+    const x = -scrollContainer.scrollLeft;
+    const y = 0;
+    
+    contentPane.setAttribute('transform', `translate(${x} ${y})`);
+  });
+});
+</script>
+  
+</html>
