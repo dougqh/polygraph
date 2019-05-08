@@ -1,0 +1,20 @@
+interface Space<T> {
+  get min(): T;
+  
+  get max(): T;
+  
+  get label(): optional<T>;
+  
+  get unit(): optional<string>;
+  
+  compare(T lhs, T rhs): int;
+  
+  toDisplayString(T): string;
+  
+  toNum(T): int;
+}
+
+Compatible spaces may be merged together to create a unified space.
+
+
+What does a thread space look like?

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head><title>Scrollbar Demo</title></head>
+
+<style>
+  .polygraph.scrollbar {
+    display: inline-block;
+  }
+  
+  #snowman circle {
+    fill: white;
+    stroke: black;
+    stroke-width: 1px;
+  }
+</style>
+
+<body>
+<svg width='1000' height='600'>
+  <g id='sun'>
+    <circle cx='700' cy='100' r='200' fill='yellow' />
+  </g>
+  
+  <rect id='ground' x='0' y='400' width='1000' height='200' fill='brown' />
+
+  <g id='snowman'>
+    <g transform='translate(200 200)'>
+      <circle cx='0' cy='250' r='100' />
+      <circle cx='0' cy='150' r='75' />
+      <circle cx='0' cy='60' r='50' />
+    </g>
+  </g>
+</svg>
+
+<div id='controls'></div>
+</body>
+
+<script>
+const importScrollbars = import('../src/polygraph-scrollbars.js');
+
+document.addEventListener('DOMContentLoaded', () => {
+  importScrollbars.then((scrollbars) => {
+    const snowman = document.getElementById('snowman');
+    
+    const snowmanBar = new scrollbars.HorizontalScrollbar({
+      id: 'snowman-bar',
+      visibleSize: 100,
+      contentSize: 400,
+      overflow: 'auto'
+    });    
+    snowmanBar.addListener(() => {
+      const xDelta = snowmanBar.position;
+      
+      snowman.setAttribute('transform', `translate(${xDelta} 0)`);
+    });
+    
+    const sun = document.getElementById('sun');
+    
+    const sunBar = new scrollbars.VerticalScrollbar({
+      id: 'sun-bar',
+      visibleSize: 100,
+      contentSize: 300,
+      overflow: 'auto'
+    });
+    sunBar.addListener(() => {
+      const yDelta = 2 * sunBar.position;
+      
+      sun.setAttribute('transform', `translate(0 ${yDelta})`);
+    });
+    
+    const controls = document.getElementById('controls');
+    controls.append(snowmanBar.element);
+    controls.append(sunBar.element);
+  });
+});
+
+</script>
+</html>
