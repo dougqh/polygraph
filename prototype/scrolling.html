@@ -6,57 +6,55 @@
   text {
     text-anchor: middle;
   }
+  
+  #horiz-scroll {
+    position: absolute;
+    top: 600px;
+    left: 0px;
+  }
+  
+  #vert-scroll {
+    position: absolute;
+    top: 0px;
+    left: 800px;
+  }
 </style>
 
 <body>
 
+<div style='width: 800px; height: 600px;'>
 <svg width='800' height='600'>
   <g class='content' transform='translate(0 0)'>
-    <path d='M 0 0 v 20 
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20
-      m 100 -20 v 20'
-      stroke='black' stroke-width='1px' />
-      
-    <text x='0' y='50'>0</text>
-    <text x='100' y='50'>100</text>
-    <text x='200' y='50'>200</text>
-    <text x='300' y='50'>300</text>
-    <text x='400' y='50'>400</text>
-    <text x='500' y='50'>500</text>
-    <text x='600' y='50'>600</text>
-    <text x='700' y='50'>700</text>
-    <text x='800' y='50'>800</text>
-    <text x='900' y='50'>900</text>
-    <text x='1000' y='50'>1000</text>    
+    <circle cx='200' cy='200' r='500' fill='blue' />
+    <circle cx='800' cy='600' r='400' fill='green' />
   </g>
 </svg>
 
-<div id='scroll-container' style='width: 800px; overflow-x: auto;'>
+<div id='horiz-scroll' style='width: 800px; overflow-x: auto;'>
   <div style='width: 1000px; height: 1px;'>&nbsp;</div>
 </div>
 
+<div id='vert-scroll' style='height: 600px; overflow-y: auto;'>
+  <div style='height: 1000px; width: 1px;'>&nbsp;</div>
 </body>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const scrollContainer = document.querySelector('#scroll-container');
-  
+  const horizScroll = document.querySelector('#horiz-scroll');
+  const vertScroll = document.querySelector('#vert-scroll');
   const contentPane = document.querySelector('.content');
   
-  scrollContainer.addEventListener('scroll', (e) => {
-    const x = -scrollContainer.scrollLeft;
-    const y = 0;
+  const scrollHandler = (e) => {
+    console.log('scroll', e, e.target);
+    
+    const x = -horizScroll.scrollLeft;
+    const y = -vertScroll.scrollTop;
     
     contentPane.setAttribute('transform', `translate(${x} ${y})`);
-  });
+  };
+  
+  horizScroll.addEventListener('scroll', scrollHandler);
+  vertScroll.addEventListener('scroll', scrollHandler);
 });
 </script>
   
