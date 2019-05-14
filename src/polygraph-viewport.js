@@ -22,7 +22,7 @@ const genId = (() => {
 const viewportTemplate = (() => {
   const html = [
     '<div>',
-    '<svg xmlns="http://www.w3.org/2000/svg" class="polygraph-viewport" style="width: 100%; height: 100%;">',
+    '<svg xmlns="http://www.w3.org/2000/svg" class="polygraph viewport" style="width: 100%; height: 100%;">',
       '<g class="underlay"></g>',
       '<g class="content-container">',
       '  <clipPath><rect></rect></clipPath>',
@@ -65,6 +65,10 @@ function calcInnerMarginPixels(marginObj, bounds) {
   };
 }
 
+function importScrollbars() {
+  return import('./polygraph-scrollbars.js');
+}
+
 export class Viewport {
   static get DEFAULT_INNER_MARGINS() {
     return {
@@ -86,6 +90,13 @@ export class Viewport {
     
     this._innerMargins = Viewport.DEFAULT_INNER_MARGINS;
     this._priorBounds = { width: -1, height: -1 };
+    
+    // stand-ins until scrollbar module is loaded
+    this._horizScrollbar = {};
+    this._vertScrollbar = {};
+    this._attachedScrollbars = false;
+    
+    importScrollbars().then((scrollbarsModule) => this._attachScrollbars(scrollbarsModule));
   }
   
   updateStyle(style) {
@@ -98,28 +109,28 @@ export class Viewport {
     if ( style.padding ) this.padding = style.padding;
   }
   
-  set dims(dimsObj) {
-    if ( typeof dimsObj.width !== 'undefined' ) this.width = dimsObj.width;
-    if ( typeof dimsObj.height !== 'undefined' ) this.heigh = dimsObj.height;
+  set visibleDimensions(dimsObj) {
+    this.width = dimsObj.width;
+    this.height = dimsObj.height;
   }
   
-  set width(width) {
+  set visibleWidth(width) {
     this._div.style.width = width;
     
     this.resizePanels();
   }
   
-  set height(height) {
+  set visibleHeight(height) {
     this._div.style.height = height;
     
     this.resizePanels();
   }
   
-  get width() {
+  get visibleWidth() {
     return thhs._div.style.width;
   }
   
-  get height() {
+  get visibleHeight() {
     return this._div.style.height;
   }
   
@@ -172,6 +183,22 @@ export class Viewport {
     return this._div.display;
   }
   
+  set overflowX(overflow) {
+    this._horizScrollbar.overflow = overflow;
+  }
+  
+  get overflowX() {
+    return this._horizScrollbar.overflow;
+  }
+  
+  set overflowY(overflow) {
+    this._vertScrollbar.overflow = overflow;
+  }
+  
+  get overflowY() {
+    return this._vertScrollbar.overflow;
+  }
+  
   get element() {
     return this._div;
   }
@@ -205,7 +232,6 @@ export class Viewport {
     const svgBounds = this._svg.getBoundingClientRect();
     
     const marginPxs = calcInnerMarginPixels(this._innerMargins, svgBounds);
-    // debug('computed padding', padding);
         
     const contentDims = {
       width: svgBounds.width - marginPxs.left - marginPxs.right,
@@ -239,5 +265,27 @@ export class Viewport {
     
     this._resizePending = false;
     this._priorBounds = svgBounds;
+  }
+  
+  _attachScrollbars(scrollbarsModule) {
+    const svgBounds = this._svg.getBoundingClientRect();
+    
+    console.log('attaching scrollbars');
+    
+    // pass along accumulated values from the stand-in object
+    this._horizScrollbar = new scrollbarsModule.HorizontalScrollbar(this._horizScrollbar);
+    this._div.append(this._horizScrollbar.element);
+    
+    this._horizScrollbar.element.style.position = 'absolute';
+    this._horizScrollbar.element.style.bottom = '0px';
+    
+    // pass along accumulated values from the stand-in object
+    this._vertScrollbar = new scrollbarsModule.VerticalScrollbar(this._vertScrollbar);
+    this._div.append(this._vertScrollbar.element);
+    
+    this._vertScrollbar.element.style.position = 'absolute';
+    this._vertScrollbar.element.style.right = '0px';
+    
+    this._attachedScrollbars = true;
   }
 }
