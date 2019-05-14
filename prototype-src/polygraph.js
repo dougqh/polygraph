@@ -48,6 +48,7 @@ function computePadding(style, bounds) {
 }
 
 const viewportTemplate = template(
+  '<div>',
   '<svg class="polygraph-viewport" xmlns="http://www.w3.org/2000/svg">',
     '<g class="underlay"></g>',
     '<g class="content-container">',
@@ -60,7 +61,8 @@ const viewportTemplate = template(
     '<g class="right panel"></g>',
     '<g class="top panel"></g>',
     '<g class="bottom panel"></g>',
-  '</svg>'
+  '</svg>',
+  '</div>'
 );
 
 class Viewport extends HTMLElement {
@@ -71,15 +73,15 @@ class Viewport extends HTMLElement {
   connectedCallback() {
     console.log(viewportTemplate.content);
     
-    this._svg = document.importNode(viewportTemplate.content, true).firstElementChild;
+    this._div = document.importNode(viewportTemplate.content, true).firstElementChild;
+    this._svg = this._div.querySelector('svg');
     
     const contentContainer = this._svg.querySelector('.content-container');
     const clipPathId = genId();
     contentContainer.querySelector('clipPath').id = clipPathId;
     contentContainer.querySelector('.content').setAttribute('clip-path', `url(#${clipPathId})`);
     
-    this.appendChild(this._svg);
-    this.after(this._svg);
+    this.after(this._div);
     
     this.style.display = 'none';
     
