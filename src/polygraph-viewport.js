@@ -88,6 +88,8 @@ export class Viewport {
     contentContainer.querySelector('clipPath').id = clipPathId;
     contentContainer.querySelector('.content').setAttribute('clip-path', `url(#${clipPathId})`);
     
+    this._contentDims = { width: 0, height: 0};
+    
     this._innerMargins = Viewport.DEFAULT_INNER_MARGINS;
     this._priorBounds = { width: -1, height: -1 };
     
@@ -101,29 +103,32 @@ export class Viewport {
   
   updateStyle(style) {
     // DQH: if-s are likely overkill / pointless
-    if ( style.width ) this.width = style.width;
-    if ( style.height ) this.height = style.height;
+    if ( style.width ) this.visibleWidth = style.width;
+    if ( style.height ) this.visibleHeight = style.height;
     
     if ( style.border ) this.border = style.border;
     if ( style.margin ) this.margin = style.margin;
     if ( style.padding ) this.padding = style.padding;
+    
+    if ( style.overflowX ) this.overflowX = style.overflowX;
+    if ( style.overflowY ) this.overflowY = style.overflowY;
   }
   
   set visibleDimensions(dimsObj) {
-    this.width = dimsObj.width;
-    this.height = dimsObj.height;
+    this.visibleWidth = dimsObj.width;
+    this.visibleHeight = dimsObj.height;
   }
   
   set visibleWidth(width) {
     this._div.style.width = width;
     
-    this.resizePanels();
+    this.refresh();
   }
   
   set visibleHeight(height) {
     this._div.style.height = height;
     
-    this.resizePanels();
+    this.refresh();
   }
   
   get visibleWidth() {
@@ -132,6 +137,24 @@ export class Viewport {
   
   get visibleHeight() {
     return this._div.style.height;
+  }
+  
+  set contentDimensions(dimsPxObj) {
+    this._contentDims = dimsPxObj;
+    
+    this.updateScrollbars();
+  }
+  
+  set contentWidth(width) {
+    this._contentDims.width = width;
+    
+    this.updateScrollbars();
+  }
+  
+  set contentHeight(height) {
+    this._contentDims.height = height;
+    
+    this.updateScrollbars();
   }
   
   set innerMargins(marginObj) {
@@ -144,7 +167,7 @@ export class Viewport {
       left: marginObj.left || defaults.left
     };
     
-    this.resizePanels();
+    this.refresh();
   }
   
   get innerMargins() {
@@ -204,7 +227,7 @@ export class Viewport {
   }
   
   render() {
-    this.resizePanels();
+    this.refresh();
     
     return this.element; 
   }
@@ -217,26 +240,30 @@ export class Viewport {
       ( this._priorBounds.width === svgBounds.width ) &&
       ( this._priorBounds.height === svgBounds.height );
       
-    if ( !unchanged ) this.resizePanels();
+    if ( !unchanged ) this.refresh();
   }
   
-  resizePanels() {    
-    if ( !this._resizePending ) {
-      window.setTimeout(() => this._resizePanels(), 0);
+  refresh() {    
+    if ( !this._refreshPending ) {
+      window.setTimeout(() => this._refresh(), 0);
 
-      this._resizePending = true; 
+      this._refreshPending = true; 
     }
   }
   
-  _resizePanels() {  
+  _refresh() {  
     const svgBounds = this._svg.getBoundingClientRect();
     
     const marginPxs = calcInnerMarginPixels(this._innerMargins, svgBounds);
         
-    const contentDims = {
+    const visibleContentDims = {
       width: svgBounds.width - marginPxs.left - marginPxs.right,
       height: svgBounds.height - marginPxs.top - marginPxs.bottom
     };
+    
+    this._horizScrollbar.visibleSize = visibleContentDims.width;
+    this._vertScrollbar.contentSize = visibleContentDims.height;
+    
 
     const underlay = this._svg.querySelector('.underlay');
     underlay.setAttribute('transform', translate(marginPxs.left, marginPxs.top));
@@ -262,8 +289,14 @@ export class Viewport {
     
     const leftPanel = this._svg.querySelector('.left.panel');
     leftPanel.setAttribute('transform', translate(0, marginPxs.top));
+
+    this._horizScrollbar.element.style.top = (marginPxs.top + contentDims.height) + 'px';
+    this._horizScrollbar.element.style.left = marginPxs.left + 'px';
     
-    this._resizePending = false;
+    this._vertScrollbar.element.style.top = marginPxs.top + 'px';
+    this._vertScrollbar.element.style.left = (marginPxs.left + contentDims.width) + 'px';
+    
+    this._refreshPending = false;
     this._priorBounds = svgBounds;
   }
   
@@ -277,14 +310,15 @@ export class Viewport {
     this._div.append(this._horizScrollbar.element);
     
     this._horizScrollbar.element.style.position = 'absolute';
-    this._horizScrollbar.element.style.bottom = '0px';
     
     // pass along accumulated values from the stand-in object
     this._vertScrollbar = new scrollbarsModule.VerticalScrollbar(this._vertScrollbar);
     this._div.append(this._vertScrollbar.element);
     
     this._vertScrollbar.element.style.position = 'absolute';
-    this._vertScrollbar.element.style.right = '0px';
+    
+    // call adjust panels to place scrollbars properly
+    this._refresh();
     
     this._attachedScrollbars = true;
   }
