@@ -2,6 +2,10 @@ class ViewportElement extends HTMLElement {
   static importModule() {
     return import('./polygraph-viewport.js');
   }
+  
+  static get ELEMENT_NAME() {
+    return 'polygraph-viewport';
+  }
 
   constructor() {
     super();
@@ -115,12 +119,16 @@ class ViewportElement extends HTMLElement {
   }
 };
 
+class PlotterElement extends HTMLElement {
+  
+};
+
 export function defineElements() {
-  window.customElements.define('polygraph-viewport', ViewportElement);
+  window.customElements.define(ViewportElement.ELEMENT_NAME, ViewportElement);
   
   return whenDefined();
 };
 
 export function whenDefined() {
-  return window.customElements.whenDefined('polygraph-viewport');
+  return window.customElements.whenDefined(ViewportElement.ELEMENT_NAME);
 }
