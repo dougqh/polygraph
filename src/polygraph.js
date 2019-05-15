@@ -44,7 +44,7 @@ class ViewportElement extends HTMLElement {
     return window.getComputedStyle(this);
   }
   
-  _innerMargins() {
+  get _innerMargins() {
     const margins = {};
     if ( this.hasAttribute('margin-top') ) margins.top = this.getAttribute('margin-top');
     if ( this.hasAttribute('margin-right') ) margins.right = this.getAttribute('margin-right');
