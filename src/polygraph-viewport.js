@@ -63,8 +63,8 @@ const clippedTemplate = (() => {
   const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg">',
     '<g class="panel-container">',
+    '  <clipPath><rect></rect></clipPath>',
     '  <g class="scrollable">',
-    '    <clipPath><rect></rect></clipPath>',
     '    <g></g>',
     '  </g>',  
     '</g>',
@@ -105,9 +105,9 @@ class ScrollablePanel {
     if ( clipped ) {
       const clipPathId = genId();
       
-      const clipPath = this._scrollable.querySelector('clipPath');
+      const clipPath = this._container.querySelector('clipPath');
       clipPath.id = clipPathId;
-      this._content.setAttribute('clip-path', `url(#${clipPathId})`);
+      this._scrollable.setAttribute('clip-path', `url(#${clipPathId})`);
       
       this._clippingRect = clipPath.querySelector('rect');
     }
@@ -125,6 +125,11 @@ class ScrollablePanel {
   }
   
   set scroll([xPos, yPos]) {
+    if ( this._clippingRect ) {
+      this._clippingRect.setAttribute('x', xPos);
+      this._clippingRect.setAttribute('y', yPos);
+    }
+    
     this._scrollable.setAttribute('transform', `translate(-${xPos} -${yPos})`);
   }
   
@@ -385,6 +390,7 @@ export class Viewport {
     const svgBounds = this._svg.getBoundingClientRect();
     
     const marginPxs = calcInnerMarginPixels(this._innerMargins, svgBounds);
+    console.log('margins', this._innerMargins, marginPxs);
         
     const visibleContentDims = {
       width: svgBounds.width - marginPxs.left - marginPxs.right,
