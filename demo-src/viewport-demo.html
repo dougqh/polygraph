@@ -11,31 +11,53 @@
   margin: 0;
   
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 </style>
   
 <body>
 
-<polygraph-viewport id='viewport' content-width='2000' content-height='500'></polygraph-viewport>
+<polygraph-viewport id='viewport' 
+  content-width='2000' content-height='1000'
+  margin-top='20px' margin-right='50px' margin-bottom='20px' margin-left='50px'>
+</polygraph-viewport>
 
 </body>
 
 <script>
+function createCircle(cx, cy, r, fill) {
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', cx);
+  circle.setAttribute('cy', cy);
+  circle.setAttribute('r', r);
+  circle.setAttribute('fill', fill);
+  
+  return circle;
+}
+
+function createText(x, y, textContent) {
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  text.setAttribute('x', x);
+  text.setAttribute('y', y);
+  text.textContent = textContent;
+  
+  return text;
+}
+  
 import('../src/polygraph.js').then((polygraph) => {
   polygraph.defineElements().then(() => {
     const viewport = document.getElementById('viewport');
     
     viewport.whenReady().then(() => {
       console.log('viewport ready');
-      
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', 800);
-      circle.setAttribute('cy', 250);
-      circle.setAttribute('r', 250);
-      circle.setAttribute('fill', 'yellow');
     
-      viewport.content.append(circle);
+      viewport.content.append(createCircle(800, 200, 200, 'yellow'));
+      
+      viewport.top.append(createText(800, 10, 'top'));
+      viewport.bottom.append(createText(800, 10, 'bottom'));
+      
+      viewport.left.append(createText(10, 200, 'left'));
+      viewport.right.append(createText(10, 200, 'right'));
     });
   });
 });
