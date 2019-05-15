@@ -5,6 +5,10 @@ class ViewportElement extends HTMLElement {
 
   constructor() {
     super();
+    
+    this._readyPromise = new Promise((resolve, fail) => {
+      this._readyResolver = resolve;
+    });
   }
   
   static get observedAttributes() {
@@ -67,6 +71,9 @@ class ViewportElement extends HTMLElement {
     
     this.after(this._viewport.render());
     
+    const readyResolver = this._readyResolver;
+    readyResolver();
+    
     this.style.display = 'none';
     
     // DQH: 2019 May - Tried ResizeObserver to no avail, since it isn't widely support 
@@ -75,6 +82,9 @@ class ViewportElement extends HTMLElement {
     window.addEventListener('resize', () => this._viewport.resizeHandler());
   }
   
+  whenReady() {
+    return this._readyPromise;
+  }
   
   get underlay() {
     return this._viewport.underlay;

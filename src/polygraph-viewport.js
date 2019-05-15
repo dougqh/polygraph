@@ -61,12 +61,14 @@ function importScrollbars() {
 
 const clippedTemplate = (() => {
   const svg = [
-    '<g class="panel-container" xmlns="http://www.w3.org/2000/svg">',
+    '<svg xmlns="http://www.w3.org/2000/svg">',
+    '<g class="panel-container">',
     '  <g class="scrollable">',
     '    <clipPath><rect></rect></clipPath>',
     '    <g></g>',
     '  </g>',  
-    '</g>'
+    '</g>',
+    '</svg>'
   ];
   
   const template = document.createElement('template');
@@ -76,11 +78,13 @@ const clippedTemplate = (() => {
 
 const unclippedTemplate = (() => {
   const svg = [
-    '<g class="panel-container" xmlns="http://www.w3.org/2000/svg">',
+    '<svg xmlns="http://www.w3.org/2000/svg">',
+    '<g class="panel-container">',
     '  <g class="scrollable">',
     '    <g></g>',
     '  </g>',  
-    '</g>'
+    '</g>',
+    '</svg>'
   ];
   
   const template = document.createElement('template');
@@ -93,7 +97,7 @@ class ScrollablePanel {
     const clipped = opts.hasOwnProperty('clipped' ) ? opts.clipped : true;
     
     const template = clipped ? clippedTemplate : unclippedTemplate;
-    this._container = document.importNode(template.content, true).firstElementChild;
+    this._container = document.importNode(template.content, true).firstElementChild.firstElementChild;
     
     this._scrollable = this._container.querySelector('.scrollable');
     this._content = this._scrollable.querySelector('g');
@@ -121,7 +125,7 @@ class ScrollablePanel {
   }
   
   set scroll([xPos, yPos]) {
-    this._scrollable.setAttribute('transform', `translate(${xPos} ${yPos})`);
+    this._scrollable.setAttribute('transform', `translate(-${xPos} -${yPos})`);
   }
   
   get element() {
