@@ -1,0 +1,41 @@
+<html>
+<head><title>Plotter Demo</title></head>
+
+<style>
+#plotter {
+  width: 100%;
+  height: 500px;
+  
+  padding: 0;
+  margin: 0;
+  
+  overflow-x: auto;
+  overflow-y: auto;
+}
+</style>
+  
+<body>
+
+<polygraph-space id='time' start='0' end='...' fixed='false'>
+</polygraph-space>
+  
+<polygraph-lanes id='threads'>
+  <polygraph-lane laneId='...'></polygraph-lane>
+</polygraph-lanes>
+
+<polygraph-plotter id='plotter'
+  content-width='2000' content-height='1000'
+  xspace='#time'
+  yspace='#threads'>
+</polygraph-plotter>
+
+</body>
+
+<script>  
+import('../src/polygraph.js').
+  then((polygraph) => polygraph.defineElements()).
+  then(() => {
+    // what ???
+  });
+});
+</script>
