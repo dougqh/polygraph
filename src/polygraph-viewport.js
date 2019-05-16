@@ -4,10 +4,6 @@ function debug(...parts) {
 
 // ------ utils ------
 
-function translate(x, y) {
-  return 'translate(' + x + ',' + y + ')';
-}
-
 const genId = (() => {
   let idSeq = 0;
   
