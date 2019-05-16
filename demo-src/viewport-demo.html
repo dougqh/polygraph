@@ -43,24 +43,21 @@ function createText(x, y, textContent) {
   
   return text;
 }
+
+const viewport = document.getElementById('viewport');
   
-import('../src/polygraph.js').then((polygraph) => {
-  polygraph.defineElements().then(() => {
-    const viewport = document.getElementById('viewport');
-    
-    viewport.whenReady().then(() => {
-      console.log('viewport ready');
-    
-      viewport.content.append(createCircle(800, 200, 200, 'yellow'));
+import('../src/polygraph.js').
+  then((polygraph) => polygraph.defineElements()).
+  then(() => viewport.whenReady()).
+  then(() => {
+    viewport.content.append(createCircle(800, 200, 200, 'yellow'));
       
-      viewport.top.append(createText(800, 10, 'top'));
-      viewport.bottom.append(createText(800, 10, 'bottom'));
+    viewport.top.append(createText(800, 10, 'top'));
+    viewport.bottom.append(createText(800, 10, 'bottom'));
       
-      viewport.left.append(createText(10, 200, 'left'));
-      viewport.right.append(createText(10, 200, 'right'));
-    });
+    viewport.left.append(createText(10, 200, 'left'));
+    viewport.right.append(createText(10, 200, 'right'));
   });
-});
 </script>
 
 </html>
